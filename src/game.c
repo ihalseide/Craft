@@ -2438,6 +2438,27 @@ void tree(Block *block) {
 // - buffer: command string buffer to parse
 // - forward: whether to forward the command as a chat message if the command is invalid
 // Returns: none
+// Note: commands
+// - /identity <username> <token>
+// - /logout
+// - /login <username>
+// - /online <address> <port>
+// - /offline [file]
+// - /copy
+// - /paste
+// - /tree
+// - /cylinder
+// - /fcylinder
+// - /cube
+// - /fcube
+// - /sphere
+// - /fsphere
+// - /circlex
+// - /circley
+// - /circlez
+// - /fcirclex
+// - /fcircley
+// - /fcirclez
 void parse_command(const char *buffer, int forward) {
     char username[128] = {0};
     char token[128] = {0};
@@ -2957,18 +2978,18 @@ void handle_movement(double dt) {
 // Server Commands/responses:
 // - B,p,q,x,y,z,w         : block update in chunk (p, q) at (x, y, z) of block
 //                           type "w"
-// - D,pid                 : delete player with id "pid"
-// - E,e,d                 : time elapse "e" with day length "d"
+// - D,pid                 : disconnect player with id "pid"
+// - E,e,d                 : "Time". Elapse "e" with day length "d"
 // - K,p,q,key             : set "key" for chunk (p, q)
 // - L,p,q,x,y,z,w         : light update in chunk (p, q) at (x, y, z) of block
 //                           type "w"
-// - N,pid,name            : player name for player with id
+// - N,pid,name            : nickname for player with id
 // - P,pid,x,y,z,rx,ry     : player movement update
-// - R,p,q                 : mark chunk at (p, q) as dirty
+// - R,p,q                 : Redraw chunk at (p, q)
 // - S,p,q,x,y,z,face,text : sign placement
-// - T,s                   : chat message "s"
-// - U,pid,x,y,z,rx,ry     : response to set this client's player position
-//                           (maybe upon joining the server?)
+// - T,s                   : "Talk". chat message "s"
+// - U,pid,x,y,z,rx,ry     : "You". Response to set this client's player
+//                           position (maybe upon joining the server?)
 void parse_buffer(char *buffer) {
     Player *me = g->players;
     State *s = &g->players->state;
