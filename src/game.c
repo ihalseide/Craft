@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <limits.h>
+#include <assert.h>
 #include "auth.h"
 #include "client.h"
 #include "config.h"
@@ -159,8 +161,27 @@ GLuint gen_crosshair_buffer() {
 // Returns:
 // - OpenGL buffer handle
 GLuint gen_wireframe_buffer(float x, float y, float z, float n) {
+    // (6 faces)*(4 points)*(3 dimensions) = 72 floats
     float data[72];
     make_cube_wireframe(data, x, y, z, n);
+    return gen_buffer(sizeof(data), data);
+}
+
+// Arguments:
+// - x: box center x position
+// - y: box center y position
+// - z: box center z position
+// - ex: box x extent
+// - ey: box y extent
+// - ez: box z extent
+// Returns:
+// - OpenGL buffer handle
+GLuint gen_box_wireframe_buffer(
+        float x, float y, float z, float ex, float ey, float ez)
+{
+    // (6 faces)*(4 points)*(3 dimensions) = 72 floats
+    float data[72];
+    make_box_wireframe(data, x, y, z, ex, ey, ez);
     return gen_buffer(sizeof(data), data);
 }
 
@@ -232,7 +253,7 @@ GLuint gen_player_buffer(float x, float y, float z, float rx, float ry) {
     // Player model is just a cube
     // Each face has 10 component float properties.
     // A cube model has 6 faces
-    GLfloat *data = malloc_faces(10, 6);
+    GLfloat *data = malloc_faces(10, 6*2);
     make_player(data, x, y, z, rx, ry);
     return gen_faces(10, 6, data);
 }
@@ -836,9 +857,12 @@ int hit_test_face(Player *player, int *x, int *y, int *z, int *face) {
 // - y: pointer to current player y position of feet
 // - z: pointer to current player z position of feet
 // Returns:
-// - non-zero if the player collided with a block
+// - non-zero if the player collided with a block in the Y axis
 // - may modify the x, y, and z values
-int collide(int height, float *x, float *y, float *z) {
+int collide(
+        int height, float *x, float *y, float *z,
+        float *vx, float *vy, float *vz) 
+{
     // Default result: no collision
     int result = 0;
     // Find the block map that the position is in
@@ -861,29 +885,35 @@ int collide(int height, float *x, float *y, float *z) {
     for (int dy = 0; dy < height; dy++) {
         if (px < -pad && is_obstacle(map_get(map, nx - 1, ny - dy, nz))) {
             *x = nx - pad;
+            *vx = 0;
         }
         if (px > pad && is_obstacle(map_get(map, nx + 1, ny - dy, nz))) {
             *x = nx + pad;
+            *vx = 0;
         }
         if (py < -pad && is_obstacle(map_get(map, nx, ny - dy - 1, nz))) {
             *y = ny - pad;
             result = 1;
+            *vy = 0;
         }
         if (py > pad && is_obstacle(map_get(map, nx, ny - dy + 1, nz))) {
             *y = ny + pad;
             result = 1;
+            *vy = 0;
         }
         if (pz < -pad && is_obstacle(map_get(map, nx, ny - dy, nz - 1))) {
             *z = nz - pad;
+            *vz = 0;
         }
         if (pz > pad && is_obstacle(map_get(map, nx, ny - dy, nz + 1))) {
             *z = nz + pad;
+            *vz = 0;
         }
     }
     return result;
 }
 
-// Predicate function to return whether a player position instersects the given
+// Function to return whether a player position instersects the given
 // block position.
 // Arguments:
 // - height
@@ -2111,6 +2141,90 @@ void render_wireframe(Attrib *attrib, Player *player) {
     }
 }
 
+// Get a player's hitbox (center and extents)
+// Arguments:
+// - px: the player's x position
+// - py: the player's y position
+// - pz: the player's z position
+// - x: pointer to output hitbox center x to
+// - y: pointer to output hitbox center y to
+// - z: pointer to output hitbox center z to
+// - ex: pointer to output hitbox x extent to
+// - ey: pointer to output hitbox y extent to
+// - ez: pointer to output hitbox z extent to
+// Returns:
+// - modifies values pointed to by x, y, z, ex, ey, and ez
+void player_hitbox(
+        float px, float py, float pz, float *x, float *y, float *z,
+        float *ex, float *ey, float *ez)
+{
+    *x = px;
+    *y = py - PLAYER_HEADY - (PLAYER_HEIGHT / 2.0);
+    *z = pz;
+    *ex = PLAYER_WIDTH;
+    *ey = PLAYER_HEIGHT;
+    *ez = PLAYER_WIDTH;
+}
+
+// Set player position from hitbox center point (inverse of player_hitbox())
+void player_pos_inv(float x, float y, float z, float *px, float *py, float *pz)
+{
+    *px = x;
+    *py = y + PLAYER_HEADY + (PLAYER_HEIGHT / 2.0);
+    *pz = z;
+}
+
+void render_box_wireframe(Attrib *attrib, DebugBox *box, Player *p)
+{
+    if (!box->active)
+    {
+        return;
+    }
+    State *s = &p->state;
+    glUseProgram(attrib->program);
+    float matrix[16];
+    glLineWidth(3);
+    set_matrix_3d(
+            matrix, g->width, g->height,
+            s->x, s->y, s->z, s->rx, s->ry, g->fov, g->ortho,
+            g->render_radius);
+    glUseProgram(attrib->program);
+    //glEnable(GL_COLOR_LOGIC_OP);
+    glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
+    draw_lines(attrib, box->buffer, 3, 24);
+    glLineWidth(1);
+    //glDisable(GL_COLOR_LOGIC_OP);
+}
+
+// Render all of the players' hitboxes except for the given player
+// Arguments:
+// - attrib
+// - p: given player
+// Returns: none
+void render_players_hitboxes(Attrib *attrib, Player *p)
+{
+    State *s = &p->state;
+    glUseProgram(attrib->program);
+    glLineWidth(2);
+    for (int i = 0; i < g->player_count; i++) {
+        Player *other = g->players + i;
+        if (other != p) {
+            float matrix[16];
+            set_matrix_3d(
+                    matrix, g->width, g->height,
+                    s->x, s->y, s->z, s->rx, s->ry, g->fov, g->ortho,
+                    g->render_radius);
+            glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
+            State *os = &other->state;
+            float x, y, z, ex, ey, ez;
+            player_hitbox(os->x, os->y, os->z, &x, &y, &z, &ex, &ey, &ez);
+            GLuint box_buffer = gen_box_wireframe_buffer(x, y, z, ex, ey, ez);
+            draw_lines(attrib, box_buffer, 3, 24);
+            del_buffer(box_buffer);
+        }
+    }
+}
+
 // Arguments:
 // - attrib
 // Returns: none
@@ -2463,11 +2577,37 @@ void parse_command(const char *buffer, int forward) {
     char username[128] = {0};
     char token[128] = {0};
     char server_addr[MAX_ADDR_LENGTH];
-    // Note: DEFAULT_PORT is defined in "client.h"
     int server_port = DEFAULT_PORT;
     char filename[MAX_PATH_LENGTH];
     int radius, count, xc, yc, zc;
-    if (sscanf(buffer, "/identity %128s %128s", username, token) == 2) {
+    if (strcmp(buffer, "/info1") == 0)
+    {
+        debug_set_info_box_active(1, !g->info1.active);
+    }
+    else if (strcmp(buffer, "/info2") == 0)
+    {
+        debug_set_info_box_active(2, !g->info2.active);
+    }
+    else if (strcmp(buffer, "/info3") == 0)
+    {
+        debug_set_info_box_active(3, !g->info3.active);
+    }
+    else if (strcmp(buffer, "/ghost") == 0)
+    {
+        // spawn ghost
+        Player *me = &g->players[0];
+        delete_ghost(me);
+        create_ghost(me);
+        add_message("Added ghost");
+    }
+    else if (strcmp(buffer, "/noghost") == 0)
+    {
+        // remove ghost
+        Player *me = &g->players[0];
+        delete_ghost(me);
+        add_message("Removed ghost");
+    }
+    else if (sscanf(buffer, "/identity %128s %128s", username, token) == 2) {
         db_auth_set(username, token);
         add_message("Successfully imported identity token!");
         login();
@@ -2909,7 +3049,6 @@ void handle_mouse_input() {
 // - dt: delta time
 // Returns: none
 void handle_movement(double dt) {
-    static float dy = 0;
     State *s = &g->players->state;
     int sz = 0;
     int sx = 0;
@@ -2926,42 +3065,44 @@ void handle_movement(double dt) {
         if (glfwGetKey(g->window, GLFW_KEY_UP)) s->ry += m;
         if (glfwGetKey(g->window, GLFW_KEY_DOWN)) s->ry -= m;
     }
-    float vx, vy, vz;
-    get_motion_vector(s->flying, sz, sx, s->rx, s->ry, &vx, &vy, &vz);
+    float ax, ay, az;
+    get_motion_vector(s->flying, sz, sx, s->rx, s->ry, &ax, &ay, &az);
     if (!g->typing) {
         if (glfwGetKey(g->window, CRAFT_KEY_JUMP)) {
             if (s->flying) {
-                vy = 1;
+                ay = 1;
             }
-            else if (dy == 0) {
-                dy = 8;
+            else if (s->vy == 0) {
+                ay = 8;
             }
         }
     }
-    float speed = s->flying ? 20 : 5;
+    // Friction
+    s->vx *= 0.90;
+    s->vy *= 0.99;
+    s->vz *= 0.90;
+    float speed = s->flying ? 5 : 1;
+    s->vx += ax * speed;
+    s->vy += ay * speed;
+    s->vz += az * speed;
     int estimate = roundf(sqrtf(
-        powf(vx * speed, 2) +
-        powf(vy * speed + ABS(dy) * 2, 2) +
-        powf(vz * speed, 2)) * dt * 8);
+        powf(s->vx, 2) +
+        powf(s->vy + ABS(ay) * 2, 2) +
+        powf(s->vz, 2)) * dt * 8);
     int step = MAX(8, estimate);
     float ut = dt / step;
-    vx = vx * ut * speed;
-    vy = vy * ut * speed;
-    vz = vz * ut * speed;
     for (int i = 0; i < step; i++) {
         if (s->flying) {
-            dy = 0;
+            s->vy = ay * speed * speed;
         }
         else {
-            dy -= ut * 25;
-            dy = MAX(dy, -250);
+            s->vy -= ut * 25;
+            s->vy = MAX(s->vy, -250);
         }
-        s->x += vx;
-        s->y += vy + dy * ut;
-        s->z += vz;
-        if (collide(2, &s->x, &s->y, &s->z)) {
-            dy = 0;
-        }
+        s->x += s->vx * ut;
+        s->y += s->vy * ut;
+        s->z += s->vz * ut;
+        collide(2, &s->x, &s->y, &s->z, &s->vx, &s->vy, &s->vz);
     }
     if (s->y < 0) {
         s->y = highest_block(s->x, s->z) + 2;
@@ -3121,5 +3262,96 @@ void reset_model() {
     g->day_length = DAY_LENGTH;
     glfwSetTime(g->day_length / 3.0);
     g->time_changed = 1;
+
+    // debug
+    memset(&g->info1, 0, sizeof(g->info1));
+    memset(&g->info2, 0, sizeof(g->info2));
+    memset(&g->info3, 0, sizeof(g->info3));
+}
+
+int ghost_id(int pid)
+{
+    return -9999 + pid;
+}
+
+// Create a player model "ghost" for given player
+void create_ghost(Player *p)
+{
+    Player *player = g->players + g->player_count;
+    g->player_count++;
+    player->id = ghost_id(p->id);
+    player->buffer = 0;
+    snprintf(player->name, MAX_NAME_LENGTH, "ghost%d", p->id);
+    update_player(player, p->state.x, p->state.y, p->state.z,
+                    p->state.rx, p->state.ry, 1);
+    update_player(player, p->state.x, p->state.y, p->state.z,
+                    p->state.rx, p->state.ry, 1);
+}
+
+void delete_ghost(Player *p)
+{
+    if (p)
+    {
+        delete_player(ghost_id(p->id));
+    }
+}
+
+// SET CURRENTLY DRAWN HIT BOX THINGY
+// Arguments:
+// - n: box number
+void debug_set_info_box(
+        int n, float x, float y, float z, float ex, float ey, float ez)
+{
+    DebugBox *box;
+    switch(n)
+    {
+        case 1:
+            box = &g->info1;
+            break;
+        case 2:
+            box = &g->info2;
+            break;
+        case 3:
+            box = &g->info3;
+            break;
+        default:
+            return;
+    }
+    if (box->active)
+    {
+        del_buffer(box->buffer);
+        box->x = x;
+        box->y = y;
+        box->z = z;
+        box->ex = ex;
+        box->ey = ey;
+        box->ez = ez;
+        box->buffer = gen_box_wireframe_buffer(x, y, z, ex, ey, ez);
+    }
+}
+
+void debug_set_info_box_active(int n, int active)
+{
+    DebugBox *box;
+    switch(n)
+    {
+        case 1:
+            box = &g->info1;
+            break;
+        case 2:
+            box = &g->info2;
+            break;
+        case 3:
+            box = &g->info3;
+            break;
+        default:
+            return;
+    }
+    box->active = active != 0;
+}
+
+// run all test functions in this file
+void test_game(void)
+{
 }
 

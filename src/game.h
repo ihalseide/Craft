@@ -20,6 +20,13 @@
 #define WORKER_BUSY 1
 #define WORKER_DONE 2
 
+// Player hitbox extent
+#define PLAYER_WIDTH 0.4f
+#define PLAYER_HEIGHT 1.2f
+#define PLAYER_BLOCKHEIGHT 3
+// Difference between player's position and player's head/eye level
+#define PLAYER_HEADY 0.25f
+
 // World chunk data (big area of blocks)
 // - map: block hash map
 // - lights: light hash map
@@ -111,6 +118,9 @@ typedef struct {
     float z;
     float rx;
     float ry;
+    float vx;
+    float vy;
+    float vz;
     float t; 
     int flying;
 } State;
@@ -158,6 +168,26 @@ typedef struct {
     GLuint extra3;
     GLuint extra4;
 } Attrib;
+
+// - active: flag for whether the box is active
+// - x: box center x
+// - y: box center y
+// - z: box center z
+// - ex: box extent x
+// - ey: box extent y
+// - ez: box extent z
+// - buffer: opengl points model
+typedef struct
+{
+    int active;
+    float x;
+    float y;
+    float z;
+    float ex;
+    float ey;
+    float ez;
+    GLuint buffer;
+} DebugBox;
 
 // Program state model
 // - window:
@@ -230,6 +260,11 @@ typedef struct {
     Block block1;
     Block copy0;
     Block copy1;
+
+    // temporary for debugging
+    DebugBox info1;
+    DebugBox info2;
+    DebugBox info3;
 } Model;
 
 // Game model pointer
@@ -283,7 +318,9 @@ int hit_test(
         int previous, float x, float y, float z, float rx, float ry,
         int *bx, int *by, int *bz);
 int hit_test_face(Player *player, int *x, int *y, int *z, int *face);
-int collide(int height, float *x, float *y, float *z);
+int collide(
+        int height, float *x, float *y, float *z,
+        float *vx, float *vy, float *vz);
 int player_intersects_block(
         int height, float x, float y, float z, int hx, int hy, int hz);
 int _gen_sign_buffer(
@@ -357,6 +394,43 @@ void handle_mouse_input();
 void handle_movement(double dt);
 void parse_buffer(char *buffer);
 void reset_model();
+
+// NEW FUNCTIONS
+void create_ghost(Player *p);
+void delete_ghost(Player *p);
+void render_players_hitboxes(Attrib *attrib, Player *p);
+void box_broadphase(
+        float x, float y, float z, float ex, float ey, float ez,
+        float vx, float vy, float vz, float *bx, float *by, float *bz,
+        float *bex, float *bey, float *bez);
+void player_hitbox(
+        float px, float py, float pz, float *x, float *y, float *z,
+        float *ex, float *ey, float *ez);
+void render_box_wireframe(Attrib *attrib, DebugBox *box, Player *p);
+void debug_set_info_box(
+        int n, float x, float y, float z, float ex, float ey, float ez);
+void debug_set_info_box_active(int n, int active);
+void test_game(void);
+float box_sweep_box(
+        float ax, float ay, float az, float aex, float aey, float aez,
+        float bx, float by, float bz, float bex, float bey, float bez,
+        float vx, float vy, float vz, float *nx, float *ny, float *nz);
+float box_sweep_box(
+        float ax, float ay, float az, float aex, float aey, float aez,
+        float bx, float by, float bz, float bex, float bey, float bez,
+        float vx, float vy, float vz, float *nx, float *ny, float *nz);
+int box_intersect_box(
+        float ax, float ay, float az, float aex, float aey, float aez,
+        float bx, float by, float bz, float bex, float bey, float bez);
+int box_intersect_block(
+        float x, float y, float z, float ex, float ey, float ez,
+        int bx, int by, int bz);
+void box_handle(
+        float *x, float *y, float *z, float ex, float ey, float ez,
+        float *vx, float *vy, float *vz);
+float box_collide_world(
+        float *x, float *y, float *z, float ex, float ey, float ez,
+        float *vx, float *vy, float *vz);
 
 #endif /*_game_h_*/
 

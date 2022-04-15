@@ -15,6 +15,11 @@
 
 extern Model *g;
 
+void test(void)
+{
+    test_game();
+}
+
 // Main program code
 // Arguments:
 // - argc
@@ -22,6 +27,8 @@ extern Model *g;
 // Returns:
 // - zero upon success, non-zero upon failure
 int main(int argc, char **argv) {
+    test();
+
     // INITIALIZATION //
     curl_global_init(CURL_GLOBAL_DEFAULT);
     srand(time(NULL));
@@ -287,6 +294,10 @@ int main(int argc, char **argv) {
             render_players(&block_attrib, player);
             if (SHOW_WIREFRAME) {
                 render_wireframe(&line_attrib, player);
+                render_players_hitboxes(&line_attrib, player);
+                render_box_wireframe(&line_attrib, &g->info1, player);
+                render_box_wireframe(&line_attrib, &g->info2, player);
+                render_box_wireframe(&line_attrib, &g->info3, player);
             }
 
             // RENDER HUD //

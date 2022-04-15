@@ -53,6 +53,31 @@ void mat_translate(float *matrix, float dx, float dy, float dz) {
     matrix[15] = 1;
 }
 
+// Set the given matrix to
+//   ( x 0 0 0 )
+//   ( 0 y 0 0 )
+//   ( 0 0 z 0 )
+//   ( 0 0 0 1 )
+void mat_scale(float *matrix, float x, float y, float z)
+{
+    matrix[0] = x;
+    matrix[1] = 0;
+    matrix[2] = 0;
+    matrix[3] = 0;
+    matrix[4] = 0;
+    matrix[5] = y;
+    matrix[6] = 0;
+    matrix[7] = 0;
+    matrix[8] = 0;
+    matrix[9] = 0;
+    matrix[10] = z;
+    matrix[11] = 0;
+    matrix[12] = 0;
+    matrix[13] = 0;
+    matrix[14] = 0;
+    matrix[15] = 1;
+}
+
 void mat_rotate(float *matrix, float x, float y, float z, float angle) {
     normalize(&x, &y, &z);
     float s = sinf(angle);
@@ -111,6 +136,17 @@ void mat_multiply(float *matrix, float *a, float *b) {
     }
 }
 
+// Apply a matrix to multiple points contained in the area pointed to by data.
+// Arguments:
+// - data: data containing the 3D points to transform
+// - matrix: transformation matrix to apply
+// - count: number of points
+// - offset: initial offset into data
+// - stride: number of elements between each of the points, including the points
+//   themselves (should be >= 3)
+// Returns:
+// - no return value
+// - modifies data
 void mat_apply(float *data, float *matrix, int count, int offset, int stride) {
     float vec[4] = {0, 0, 0, 1};
     for (int i = 0; i < count; i++) {

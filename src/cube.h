@@ -23,6 +23,9 @@ void make_player(
 void make_cube_wireframe(
     float *data, float x, float y, float z, float n);
 
+void make_box_wireframe(
+        float *data, float x, float y, float z, float ex, float ey, float ez);
+
 void make_character(
     float *data,
     float x, float y, float n, float m, char c);
