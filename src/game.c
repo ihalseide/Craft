@@ -20,6 +20,7 @@
 #include "util.h"
 #include "world.h"
 #include "game.h"
+#include "hitbox.h"
 
 // The main game state is kept here
 static Model model;
@@ -3109,6 +3110,102 @@ void handle_movement(double dt) {
     }
 }
 
+void handle_movement2(double dt) {
+    State *s = &g->players->state;
+    int sz = 0;
+    int sx = 0;
+    if (!g->typing) {
+        float m = dt * 1.0;
+        g->ortho = glfwGetKey(g->window, CRAFT_KEY_ORTHO) ? 64 : 0;
+        g->fov = glfwGetKey(g->window, CRAFT_KEY_ZOOM) ? 15 : 65;
+        if (glfwGetKey(g->window, CRAFT_KEY_FORWARD)) sz--;
+        if (glfwGetKey(g->window, CRAFT_KEY_BACKWARD)) sz++;
+        if (glfwGetKey(g->window, CRAFT_KEY_LEFT)) sx--;
+        if (glfwGetKey(g->window, CRAFT_KEY_RIGHT)) sx++;
+        if (glfwGetKey(g->window, GLFW_KEY_LEFT)) s->rx -= m;
+        if (glfwGetKey(g->window, GLFW_KEY_RIGHT)) s->rx += m;
+        if (glfwGetKey(g->window, GLFW_KEY_UP)) s->ry += m;
+        if (glfwGetKey(g->window, GLFW_KEY_DOWN)) s->ry -= m;
+    }
+    // Get acceleration motion from the inputs
+    float ax, ay, az;
+    get_motion_vector(s->flying, sz, sx, s->rx, s->ry, &ax, &ay, &az);
+    float speed = s->flying ? 100 : 50;
+    ax = ax * dt * speed;
+    ay = ay * dt * speed;
+    az = az * dt * speed;
+    // Add acceleration to velocity
+    s->vx += ax;
+    s->vy += ay;
+    s->vz += az;
+    // Do collision with player hitbox and velocity
+    float bx, by, bz, ex, ey, ez;
+    player_hitbox(s->x, s->y, s->z, &bx, &by, &bz, &ex, &ey, &ez);
+    float nx, ny, nz;
+    float t = box_sweep_world(
+            bx, by, bz, ex, ey, ez, s->vx * dt, s->vy * dt, s->vz * dt,
+            &nx, &ny, &nz);
+    // TODO: this code works for checking once, but the check needs to happen
+    // multiple times because resolving a collision might cause a secondary one
+    // on another axis!
+    if (t < 1.0)
+    {
+        // There was a collision
+        // Move up to the collision moment
+        bx += s->vx * t * dt;
+        by += s->vy * t * dt;
+        bz += s->vz * t * dt;
+        // Get remaining time in the frame
+        float rt = 1.0 - t;
+        // Respond to collision normal vector by modifying the velocity vector
+        if (nx != 0.0)
+        {
+            // In x direction
+            s->vx = 0;
+        }
+        else if (ny != 0.0)
+        {
+            // In y direction
+            s->vy = 0;
+        }
+        else if (nz != 0.0)
+        {
+            // In z direction
+            s->vz = 0;
+        }
+        // Apply velocity from collision response
+        s->x += s->vx * rt * dt;
+        s->y += s->vy * rt * dt;
+        s->z += s->vz * rt * dt;
+        player_pos_inv(bx, by, bz, &s->x, &s->y, &s->z);
+    }
+    else
+    {
+        // There was no collision
+        // Add velocity to position
+        s->x += s->vx * dt;
+        s->y += s->vy * dt;
+        s->z += s->vz * dt;
+    }
+    // Decay velocity, r is friction factor
+    float r = s->flying ? 4.0 : 6.0;
+    s->vx -= s->vx * r * dt;
+    s->vy -= s->vy * r * dt;
+    s->vz -= s->vz * r * dt;
+    // Set a minimum velocity for velocity to be clamped to 0
+    float v_min_sq = 0.005;
+    if (powf(s->vx,2) + powf(s->vy,2) + powf(s->vz,2) < v_min_sq)
+    {
+        s->vx = 0;
+        s->vy = 0;
+        s->vz = 0;
+    }
+    // Make sure position does not go below the world
+    if (s->y < 0) {
+        s->y = highest_block(s->x, s->z) + 2;
+    }
+}
+
 // Parse response string from server
 // Arguments:
 // - buffer: the response string to parse
@@ -3354,4 +3451,108 @@ void debug_set_info_box_active(int n, int active)
 void test_game(void)
 {
 }
+
+// Return whether a bounding box currently intersects a block in the world.
+int box_intersect_world(
+        float x, float y, float z, float ex, float ey, float ez)
+{
+    int x0, y0, z0, x1, y1, z1;
+    box_nearest_blocks(x, y, z, ex, ey, ez, &x0, &y0, &z0, &x1, &y1, &z1);
+    for (int bx = x0; bx <= x1; bx++) {
+        for (int by = y0; by <= y1; by++) {
+            for (int bz = z0; bz <= z1; bz++) {
+                int w = get_block(bx, by, bz);
+                if (!is_obstacle(w)) {
+                    continue;
+                }
+                if (box_intersect_block(x, y, z, ex, ey, ez, bx, by, bz)) {
+                    return 1;
+                }
+            }
+        }
+    }
+    return 0;
+}
+
+// Sweep moving bounding box with all nearby blocks in the world. Returns the
+// info for the earliest intersection.
+// Arguments:
+// - x, y, z: box center position
+// - ex, ey, ez: box extents
+// - vx, vy, vz: box velocity
+// - nx, ny, nz: pointers to output the normal vector to
+// Returns:
+// - earliest collision time, between 0.0 and 1.0
+// - writes values out to nx, ny, and nz
+// - if the returned time is 1.0, then the normal vector may not be initialized
+float box_sweep_world(
+        float x, float y, float z, float ex, float ey, float ez,
+        float vx, float vy, float vz, float *nx, float *ny, float *nz)
+{
+    float t = 1.0;
+    // No velocity -> no collision
+    if (vx == 0 && vy == 0 && vz == 0)
+    {
+        return t;
+    }
+    float bbx, bby, bbz, bbex, bbey, bbez;
+    box_broadphase(
+            x, y, z, ex, ey, ez, vx, vy, vz, &bbx, &bby, &bbz,
+            &bbex, &bbey, &bbez);
+    debug_set_info_box(1, bbx, bby, bbz, bbex, bbey, bbez);
+    int x0, y0, z0, x1, y1, z1;
+    box_nearest_blocks(bbx, bby, bbz, bbex, bbey, bbez, &x0, &y0, &z0,
+            &x1, &y1, &z1);
+    debug_set_info_box(2, (x1+x0)/2.0, (y1+y0)/2.0, (z1+z0)/2.0,
+            (x1-x0)/2.0, (y1-y0)/2.0, (z1-z0)/2.0);
+    // keep track of the closest cube center found
+    float cd = INFINITY;
+    for (int bx = x0; bx <= x1; bx++)
+    {
+        for (int by = y0; by <= y1; by++)
+        {
+            for (int bz = z0; bz <= z1; bz++)
+            {
+                int w = get_block(bx, by, bz);
+                if (!is_obstacle(w))
+                {
+                    continue;
+                }
+                // Specific values that may not be for the earliest collision
+                // time
+                float snx, sny, snz;
+                float st = box_sweep_block(
+                        x, y, z, ex, ey, ez, bx, by, bz, vx, vy, vz,
+                        &snx, &sny, &snz);
+                // Check if there was a collision with this block
+                if (st == 1.0)
+                {
+                    continue;
+                }
+                // Choose by closest distance (and then by time)
+                float cube_dst_sq = 
+                    powf(x - bx, 2) + powf(y - by, 2) + powf(z - bz, 2);
+                if (cube_dst_sq < cd)
+                {
+                    cd = cube_dst_sq;
+                    t = st;
+                    *nx = snx;
+                    *ny = sny;
+                    *nz = snz;
+                }
+                // check by time if closest distance was inconclusive
+                if (cube_dst_sq == cd && st >= 0 && st < t)
+                {
+                    cd = cube_dst_sq;
+                    t = st;
+                    *nx = snx;
+                    *ny = sny;
+                    *nz = snz;
+                }
+            }
+        }
+    }
+    return t;
+}
+
 

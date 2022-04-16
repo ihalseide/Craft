@@ -1,62 +1,8 @@
-// Sweep moving bounding box with all nearby blocks in the world. Returns the
-// info for the earliest intersection.
-// Arguments:
-// - x, y, z: box center position
-// - ex, ey, ez: box extents
-// - vx, vy, vz: box velocity
-// - nx, ny, nz: pointers to output the normal vector to
-// Returns:
-// - earliest collision time, between 0.0 and 1.0
-// - writes values out to nx, ny, and nz
-// - if the returned time is 1.0, then the normal vector may not be initialized
-float box_sweep_world(
-        float x, float y, float z, float ex, float ey, float ez,
-        float vx, float vy, float vz, float *nx, float *ny, float *nz)
-{
-    float t = 1.0;
-    // No velocity -> no collision
-    if (vx == 0 && vy == 0 && vz == 0)
-    {
-        return t;
-    }
-    float bbx, bby, bbz, bbex, bbey, bbez;
-    box_broadphase(
-            x, y, z, ex, ey, ez, vx, vy, vz, &bbx, &bby, &bbz,
-            &bbex, &bbey, &bbez);
-    debug_set_info_box(1, bbx, bby, bbz, bbex, bbey, bbez);
-    int x0, y0, z0, x1, y1, z1;
-    box_nearest_blocks(bbx, bby, bbz, bbex, bbey, bbez, &x0, &y0, &z0,
-            &x1, &y1, &z1);
-    for (int bx = x0; bx <= x1; bx++)
-    {
-        for (int by = y0; by <= y1; by++)
-        {
-            for (int bz = z0; bz <= z1; bz++)
-            {
-                int w = get_block(bx, by, bz);
-                if (!is_obstacle(w))
-                {
-                    continue;
-                }
-                // Specific values that may not be for the earliest collision
-                // time
-                float snx, sny, snz;
-                float st = box_sweep_block(
-                        x, y, z, ex, ey, ez, bx, by, bz, vx, vy, vz,
-                        &snx, &sny, &snz);
-                if (st >= 0 && st < t)
-                {
-                    debug_set_info_box(2, bx, by, bz, 0.51, 0.51, 0.51);
-                    t = st;
-                    *nx = snx;
-                    *ny = sny;
-                    *nz = snz;
-                }
-            }
-        }
-    }
-    return t;
-}
+#include <assert.h>
+#include <math.h>
+#include <limits.h>
+#include "util.h"
+#include "hitbox.h"
 
 // Respond to a collision from swept collision.
 // Allow the caller to apply the resulting velocity that was just written
@@ -83,67 +29,23 @@ void handle_collision(
     {
         // In x direction
         *vx = 0;
-        *vy = *vy * rt;
-        *vz = *vz * rt;
+        *vy = *vz * rt;
+        *vz = *vy * rt;
     }
     else if (ny != 0)
     {
         // In y direction
         *vy = 0;
-        *vx = *vx * rt;
-        *vz = *vz * rt;
+        *vx = *vz * rt;
+        *vz = *vx * rt;
     }
     else if (nz != 0)
     {
         // In z direction
         *vz = 0;
-        *vx = *vx * rt;
-        *vy = *vy * rt;
+        *vx = *vy * rt;
+        *vy = *vx * rt;
     }
-}
-
-// Returns the time of the first collision
-float box_collide_world(
-        float *x, float *y, float *z, float ex, float ey, float ez,
-        float *vx, float *vy, float *vz)
-{
-    float t = 1.0;
-    if (*vx || *vy || *vz)
-    {
-        float nx, ny, nz;
-        t = box_sweep_world(
-                *x, *y, *z, ex, ey, ez, *vx, *vy, *vz, &nx, &ny, &nz);
-        handle_collision(t, nx, ny, nz, x, y, z, vx, vy, vz);
-    }
-    else
-    {
-        *x += *vx;
-        *y += *vy;
-        *z += *vz;
-    }
-    return t;
-}
-
-// Return whether a bounding box currently intersects a block in the world.
-int box_intersect_world(
-        float x, float y, float z, float ex, float ey, float ez)
-{
-    int x0, y0, z0, x1, y1, z1;
-    box_nearest_blocks(x, y, z, ex, ey, ez, &x0, &y0, &z0, &x1, &y1, &z1);
-    for (int bx = x0; bx <= x1; bx++) {
-        for (int by = y0; by <= y1; by++) {
-            for (int bz = z0; bz <= z1; bz++) {
-                int w = get_block(bx, by, bz);
-                if (!is_obstacle(w)) {
-                    continue;
-                }
-                if (box_intersect_block(x, y, z, ex, ey, ez, bx, by, bz)) {
-                    return 1;
-                }
-            }
-        }
-    }
-    return 0;
 }
 
 // Round bounding box to nearest block position start and end
@@ -428,5 +330,4 @@ int box_intersect_block(
     const float n = 0.5;
     return box_intersect_box(x, y, z, ex, ey, ez, bx, by, bz, n, n, n);
 }
-
 

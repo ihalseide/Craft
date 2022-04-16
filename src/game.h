@@ -399,10 +399,6 @@ void reset_model();
 void create_ghost(Player *p);
 void delete_ghost(Player *p);
 void render_players_hitboxes(Attrib *attrib, Player *p);
-void box_broadphase(
-        float x, float y, float z, float ex, float ey, float ez,
-        float vx, float vy, float vz, float *bx, float *by, float *bz,
-        float *bex, float *bey, float *bez);
 void player_hitbox(
         float px, float py, float pz, float *x, float *y, float *z,
         float *ex, float *ey, float *ez);
@@ -411,26 +407,11 @@ void debug_set_info_box(
         int n, float x, float y, float z, float ex, float ey, float ez);
 void debug_set_info_box_active(int n, int active);
 void test_game(void);
-float box_sweep_box(
-        float ax, float ay, float az, float aex, float aey, float aez,
-        float bx, float by, float bz, float bex, float bey, float bez,
-        float vx, float vy, float vz, float *nx, float *ny, float *nz);
-float box_sweep_box(
-        float ax, float ay, float az, float aex, float aey, float aez,
-        float bx, float by, float bz, float bex, float bey, float bez,
-        float vx, float vy, float vz, float *nx, float *ny, float *nz);
-int box_intersect_box(
-        float ax, float ay, float az, float aex, float aey, float aez,
-        float bx, float by, float bz, float bex, float bey, float bez);
-int box_intersect_block(
+float box_sweep_world(
         float x, float y, float z, float ex, float ey, float ez,
-        int bx, int by, int bz);
-void box_handle(
-        float *x, float *y, float *z, float ex, float ey, float ez,
-        float *vx, float *vy, float *vz);
-float box_collide_world(
-        float *x, float *y, float *z, float ex, float ey, float ez,
-        float *vx, float *vy, float *vz);
+        float vx, float vy, float vz, float *nx, float *ny, float *nz);
+int box_intersect_world(
+        float x, float y, float z, float ex, float ey, float ez);
 
 #endif /*_game_h_*/
 
