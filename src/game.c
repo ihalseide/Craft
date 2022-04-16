@@ -3115,6 +3115,7 @@ void handle_movement(double dt) {
     // Get acceleration motion from the inputs
     float ax, ay, az;
     get_motion_vector(s->flying, sz, sx, s->rx, s->ry, &ax, &ay, &az);
+    // Handle jump/fly
     if (!g->typing) {
         if (glfwGetKey(g->window, CRAFT_KEY_JUMP)) {
             if (s->flying)
@@ -3124,6 +3125,12 @@ void handle_movement(double dt) {
             else if (s->is_grounded) {
                 // Jump acceleration
                 ay = 15;
+            }
+        }
+        if (glfwGetKey(g->window, CRAFT_KEY_CROUCH)) {
+            if (s->flying)
+            {
+                ay = -1;
             }
         }
     }
