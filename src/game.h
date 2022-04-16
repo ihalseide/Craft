@@ -112,6 +112,9 @@ typedef struct {
 // - rx: rotation x
 // - ry: rotation y
 // - t: keep track of time, for interpolation
+// - is_grounded: flag for if on the ground and can jump
+// - is_blocked: flag for if stuck in a block
+// - flying: flag for if flying
 typedef struct {
     float x; 
     float y;
@@ -122,6 +125,8 @@ typedef struct {
     float vy;
     float vz;
     float t; 
+    int is_grounded;
+    int is_blocked;
     int flying;
 } State;
 
@@ -318,9 +323,7 @@ int hit_test(
         int previous, float x, float y, float z, float rx, float ry,
         int *bx, int *by, int *bz);
 int hit_test_face(Player *player, int *x, int *y, int *z, int *face);
-int collide(
-        int height, float *x, float *y, float *z,
-        float *vx, float *vy, float *vz);
+int collide(int height, float *x, float *y, float *z);
 int player_intersects_block(
         int height, float x, float y, float z, int hx, int hy, int hz);
 int _gen_sign_buffer(
@@ -410,7 +413,8 @@ float box_sweep_world(
         float x, float y, float z, float ex, float ey, float ez,
         float vx, float vy, float vz, float *nx, float *ny, float *nz);
 int box_intersect_world(
-        float x, float y, float z, float ex, float ey, float ez);
+        float x, float y, float z, float ex, float ey, float ez,
+        int *cx, int *cy, int *cz);
 int is_block_face_covered(int x, int y, int z, float nx, float ny, float nz);
 
 #endif /*_game_h_*/

@@ -244,8 +244,7 @@ int main(int argc, char **argv) {
             handle_mouse_input();
 
             // HANDLE MOVEMENT //
-            //handle_movement(dt);
-            handle_movement2(dt);
+            handle_movement(dt);
 
             // HANDLE DATA FROM SERVER //
             char *buffer = client_recv();
