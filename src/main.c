@@ -15,11 +15,6 @@
 
 extern Model *g;
 
-void test(void)
-{
-    test_game();
-}
-
 // Main program code
 // Arguments:
 // - argc
@@ -27,7 +22,6 @@ void test(void)
 // Returns:
 // - zero upon success, non-zero upon failure
 int main(int argc, char **argv) {
-    test();
 
     // INITIALIZATION //
     curl_global_init(CURL_GLOBAL_DEFAULT);

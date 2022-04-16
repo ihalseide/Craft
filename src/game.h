@@ -406,12 +406,12 @@ void render_box_wireframe(Attrib *attrib, DebugBox *box, Player *p);
 void debug_set_info_box(
         int n, float x, float y, float z, float ex, float ey, float ez);
 void debug_set_info_box_active(int n, int active);
-void test_game(void);
 float box_sweep_world(
         float x, float y, float z, float ex, float ey, float ez,
         float vx, float vy, float vz, float *nx, float *ny, float *nz);
 int box_intersect_world(
         float x, float y, float z, float ex, float ey, float ez);
+int is_block_face_covered(int x, int y, int z, float nx, float ny, float nz);
 
 #endif /*_game_h_*/
 

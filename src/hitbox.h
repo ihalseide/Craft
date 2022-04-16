@@ -1,9 +1,6 @@
 #ifndef _hitbox_h
 #define _hitbox_h
 
-float box_sweep_world(
-        float x, float y, float z, float ex, float ey, float ez,
-        float vx, float vy, float vz, float *nx, float *ny, float *nz);
 void handle_collision(
         float t, float nx, float ny, float nz, float *x, float *y, float *z,
         float *vx, float *vy, float *vz);

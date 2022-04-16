@@ -3141,42 +3141,53 @@ void handle_movement2(double dt) {
     // Do collision with player hitbox and velocity
     float bx, by, bz, ex, ey, ez;
     player_hitbox(s->x, s->y, s->z, &bx, &by, &bz, &ex, &ey, &ez);
+    debug_set_info_box(1, bx, by, bz, ex, ey, ez);
     float nx, ny, nz;
     float t = box_sweep_world(
             bx, by, bz, ex, ey, ez, s->vx * dt, s->vy * dt, s->vz * dt,
             &nx, &ny, &nz);
-    // TODO: this code works for checking once, but the check needs to happen
-    // multiple times because resolving a collision might cause a secondary one
-    // on another axis!
     if (t < 1.0)
     {
         // There was a collision
-        // Move up to the collision moment
-        bx += s->vx * t * dt;
-        by += s->vy * t * dt;
-        bz += s->vz * t * dt;
-        // Get remaining time in the frame
-        float rt = 1.0 - t;
-        // Respond to collision normal vector by modifying the velocity vector
-        if (nx != 0.0)
+        int steps = 4;
+        float ut = dt / steps;
+        for (int i = 0; i < steps; i++)
         {
-            // In x direction
-            s->vx = 0;
+            t = box_sweep_world(
+                    bx, by, bz, ex, ey, ez, s->vx * ut, s->vy * ut, s->vz * ut,
+                    &nx, &ny, &nz);
+            // Move up to the collision moment
+            bx += s->vx * t * ut;
+            by += s->vy * t * ut;
+            bz += s->vz * t * ut;
+            // Respond to the collision normal by stopping velocity in that
+            // direction.
+            // Offset the box by pad to prevent the hitbox from being exactly
+            // next to a block edge
+            float pad = 1.2;
+            if (nx != 0.0)
+            {
+                // In x direction
+                bx += nx * pad * ut;
+                s->vx = 0;
+            }
+            else if (ny != 0.0)
+            {
+                // In y direction
+                by += ny * pad * ut;
+                s->vy = 0;
+            }
+            else if (nz != 0.0)
+            {
+                // In z direction
+                bz += nz * pad * ut;
+                s->vz = 0;
+            }
         }
-        else if (ny != 0.0)
-        {
-            // In y direction
-            s->vy = 0;
-        }
-        else if (nz != 0.0)
-        {
-            // In z direction
-            s->vz = 0;
-        }
-        // Apply velocity from collision response
-        s->x += s->vx * rt * dt;
-        s->y += s->vy * rt * dt;
-        s->z += s->vz * rt * dt;
+        // Apply the final velocity from collision response
+        s->x += s->vx * ut;
+        s->y += s->vy * ut;
+        s->z += s->vz * ut;
         player_pos_inv(bx, by, bz, &s->x, &s->y, &s->z);
     }
     else
@@ -3447,9 +3458,11 @@ void debug_set_info_box_active(int n, int active)
     box->active = active != 0;
 }
 
-// run all test functions in this file
-void test_game(void)
-{
+// Get whether a certain block face is exposed
+int is_block_face_covered(int x, int y, int z, float nx, float ny, float nz) {
+    assert(nx != 0.0 || ny != 0.0 || nz != 0.0);
+    int w = get_block(roundf(x + nx), roundf(y + ny), roundf(z + nz));
+    return is_obstacle(w);
 }
 
 // Return whether a bounding box currently intersects a block in the world.
@@ -3481,6 +3494,7 @@ int box_intersect_world(
 // - ex, ey, ez: box extents
 // - vx, vy, vz: box velocity
 // - nx, ny, nz: pointers to output the normal vector to
+// - check_face: flag
 // Returns:
 // - earliest collision time, between 0.0 and 1.0
 // - writes values out to nx, ny, and nz
@@ -3489,6 +3503,8 @@ float box_sweep_world(
         float x, float y, float z, float ex, float ey, float ez,
         float vx, float vy, float vz, float *nx, float *ny, float *nz)
 {
+    // Default result
+    *nx = *ny = *nz = 0;
     float t = 1.0;
     // No velocity -> no collision
     if (vx == 0 && vy == 0 && vz == 0)
@@ -3499,51 +3515,64 @@ float box_sweep_world(
     box_broadphase(
             x, y, z, ex, ey, ez, vx, vy, vz, &bbx, &bby, &bbz,
             &bbex, &bbey, &bbez);
-    debug_set_info_box(1, bbx, bby, bbz, bbex, bbey, bbez);
+    // Current block that the bounding box is inside of
+    int cx, cy, cz;
+    cx = roundf(x);
+    cy = roundf(y);
+    cz = roundf(z);
+    // All possible surrounding blocks
     int x0, y0, z0, x1, y1, z1;
-    box_nearest_blocks(bbx, bby, bbz, bbex, bbey, bbez, &x0, &y0, &z0,
-            &x1, &y1, &z1);
-    debug_set_info_box(2, (x1+x0)/2.0, (y1+y0)/2.0, (z1+z0)/2.0,
-            (x1-x0)/2.0, (y1-y0)/2.0, (z1-z0)/2.0);
-    // keep track of the closest cube center found
-    float cd = INFINITY;
-    for (int bx = x0; bx <= x1; bx++)
-    {
-        for (int by = y0; by <= y1; by++)
-        {
-            for (int bz = z0; bz <= z1; bz++)
-            {
-                int w = get_block(bx, by, bz);
-                if (!is_obstacle(w))
+    box_nearest_blocks(
+            bbx, bby, bbz, bbex, bbey, bbez, &x0, &y0, &z0, &x1, &y1, &z1);
+    // Smallest distance squared
+    float dsq = INFINITY;
+    for (int bx = x0; bx <= x1; bx++) {
+        for (int by = y0; by <= y1; by++) {
+            for (int bz = z0; bz <= z1; bz++) {
+                // Skip the current block
+                if (bx == cx && by == cy && bz == cz)
                 {
                     continue;
                 }
-                // Specific values that may not be for the earliest collision
-                // time
+                // Only collide with obstacle blocks
+                int w = get_block(bx, by, bz);
+                if (!is_obstacle(w)) 
+                {
+                    continue;
+                }
+                // Check potential swept block collision
                 float snx, sny, snz;
                 float st = box_sweep_block(
                         x, y, z, ex, ey, ez, bx, by, bz, vx, vy, vz,
                         &snx, &sny, &snz);
-                // Check if there was a collision with this block
-                if (st == 1.0)
+                if (st == 1.0) 
+                {
+                    // No collision for this frame
+                    continue;
+                }
+                // Can only collide with an exposed block face
+                if (is_block_face_covered(bx, by, bz, snx, sny, snz)) 
                 {
                     continue;
                 }
-                // Choose by closest distance (and then by time)
-                float cube_dst_sq = 
-                    powf(x - bx, 2) + powf(y - by, 2) + powf(z - bz, 2);
-                if (cube_dst_sq < cd)
+                // Specific distance squared
+                float sdsq = 1;
+                //    powf(x - (x + vx*st), 2)
+                //    + powf(y - (y + vy*st), 2) 
+                //    + powf(z - (z + vz*st), 2);
+                // Check by distance
+                if (sdsq < dsq)
                 {
-                    cd = cube_dst_sq;
+                    dsq = sdsq;
                     t = st;
                     *nx = snx;
                     *ny = sny;
                     *nz = snz;
                 }
-                // check by time if closest distance was inconclusive
-                if (cube_dst_sq == cd && st >= 0 && st < t)
+                // check by time
+                else if (st >= 0 && st < t)
                 {
-                    cd = cube_dst_sq;
+                    dsq = sdsq;
                     t = st;
                     *nx = snx;
                     *ny = sny;

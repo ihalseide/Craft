@@ -99,52 +99,56 @@ float box_sweep_box(
         float bx, float by, float bz, float bex, float bey, float bez,
         float vx, float vy, float vz, float *nx, float *ny, float *nz)
 {
+    // Default normals
+    *nx = 0;
+    *ny = 0;
+    *nz = 0;
     // No velocity -> no collision
     if (vx == 0 && vy == 0 && vz == 0)
     {
         return 1.0;
     }
 
-    // xClose is the distance between the closest edges.
-    // xFar is the distance between the furthest edges.
-    float xClose, xFar;
-    if (vx > 0)
+    // xc is the x distance between the closest edges.
+    // xf is the x distance between the furthest edges.
+    float xc, xf;
+    if (vx > 0.0)
     {
-        xClose = (bx - bex) - (ax + aex);
-        xFar = (bx + bex) - (ax + aex);
+        xc = (bx - bex) - (ax + aex);
+        xf = (bx + bex) - (ax - aex);
     }
     else
     {
-        xClose = (bx + bex) - (ax - aex);
-        xFar = (bx - bex) - (ax + aex);
+        xc = (bx + bex) - (ax - aex);
+        xf = (bx - bex) - (ax + aex);
     }
 
-    // yClose is the distance between the closest edges.
-    // yFar is the distance between the furthest edges.
-    float yClose, yFar;
+    // yc is the y distance between the closest edges.
+    // yf is the y distance between the furthest edges.
+    float yc, yf;
     if (vy > 0)
     {
-        yClose = (by - bey) - (ay + aey);
-        yFar = (by + bey) - (ay + aey);
+        yc = (by - bey) - (ay + aey);
+        yf = (by + bey) - (ay - aey);
     }
     else
     {
-        yClose = (by + bey) - (ay - aey);
-        yFar = (by - bey) - (ay + aey);
+        yc = (by + bey) - (ay - aey);
+        yf = (by - bey) - (ay + aey);
     }
 
-    // zClose is the distance between the closest edges.
-    // zFar is the distance between the furthest edges.
-    float zClose, zFar;
+    // zc is the z distance between the closest edges.
+    // zf is the z distance between the furthest edges.
+    float zc, zf;
     if (vz > 0)
     {
-        zClose = (bz - bez) - (az + aez);
-        zFar = (bz + bez) - (az + aez);
+        zc = (bz - bez) - (az + aez);
+        zf = (bz + bez) - (az - aez);
     }
     else
     {
-        zClose = (bz + bez) - (az - aez);
-        zFar = (bz - bez) - (az + aez);
+        zc = (bz + bez) - (az - aez);
+        zf = (bz - bez) - (az + aez);
     }
 
     // x entry time and x exit time
@@ -156,8 +160,8 @@ float box_sweep_box(
     }
     else
     {
-        xEnterT = xClose / vx;
-        xExitT = xFar / vx;
+        xEnterT = xc / vx;
+        xExitT = xf / vx;
     }
 
     // y entry time and y exit time
@@ -169,8 +173,8 @@ float box_sweep_box(
     }
     else
     {
-        yEnterT = yClose / vy;
-        yExitT = yFar / vy;
+        yEnterT = yc / vy;
+        yExitT = yf / vy;
     }
 
     // z entry time and z exit time
@@ -182,8 +186,8 @@ float box_sweep_box(
     }
     else
     {
-        zEnterT = zClose / vz;
-        zExitT = zFar / vz;
+        zEnterT = zc / vz;
+        zExitT = zf / vz;
     }
 
     // Find the min and max times
@@ -192,24 +196,23 @@ float box_sweep_box(
     enterT = MAX(enterT, zEnterT);
     exitT = MIN(xExitT, yExitT);
     exitT = MIN(exitT, zExitT);
-    if ((enterT > exitT) || (xEnterT < 0 && yEnterT < 0 && zEnterT < 0)
-            || (xEnterT > 1)
-            || (yEnterT > 1)
+    if ((enterT > exitT)
+            || (xEnterT < 0 && yEnterT < 0 && zEnterT < 0) 
+            || (xEnterT > 1) 
+            || (yEnterT > 1) 
             || (zEnterT > 1))
     {
         // No collision
-        *nx = 0;
-        *ny = 0;
-        *nz = 0;
         return 1.0;
     }
 
     // Calculate the normal of the collided surface
-    if (xEnterT > yEnterT)
+    if (xEnterT > yEnterT && xEnterT > zEnterT)
     {
+        // x is closest
         *ny = 0;
         *nz = 0;
-        if (xClose < 0)
+        if (xc < 0)
         {
             *nx = 1;
         }
@@ -220,9 +223,10 @@ float box_sweep_box(
     }
     else if (yEnterT > zEnterT)
     {
+        // y is closest
         *nx = 0;
         *nz = 0;
-        if (yClose < 0)
+        if (yc < 0)
         {
             *ny = 1;
         }
@@ -233,9 +237,10 @@ float box_sweep_box(
     }
     else
     {
+        // z is closest
         *nx = 0;
         *ny = 0;
-        if (zClose < 0)
+        if (zc < 0)
         {
             *nz = 1;
         }
