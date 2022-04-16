@@ -3117,7 +3117,11 @@ void handle_movement(double dt) {
     get_motion_vector(s->flying, sz, sx, s->rx, s->ry, &ax, &ay, &az);
     if (!g->typing) {
         if (glfwGetKey(g->window, CRAFT_KEY_JUMP)) {
-            if (!s->flying && s->is_grounded) {
+            if (s->flying)
+            {
+                ay = 1;
+            }
+            else if (s->is_grounded) {
                 // Jump acceleration
                 ay = 15;
             }
@@ -3200,14 +3204,14 @@ void handle_movement(double dt) {
             if (nx != 0.0)
             {
                 // In x direction
-                bx += nx * pad;
-                s->vx = 0;
+                bx += nx * 0.001;
+                s->vx = nx * pad;
             }
             else if (ny != 0.0)
             {
                 // In y direction
-                by += ny * pad;
-                s->vy = 0;
+                by += ny * 0.001;
+                s->vy = ny * pad;
                 if (ny > 0)
                 {
                     s->is_grounded = 1;
@@ -3216,8 +3220,8 @@ void handle_movement(double dt) {
             else if (nz != 0.0)
             {
                 // In z direction
-                bz += nz * pad;
-                s->vz = 0;
+                bz += nz * 0.001;
+                s->vz = nz * pad;
             }
         }
         // Update player position
