@@ -290,17 +290,18 @@ GLuint gen_cube_buffer(float x, float y, float z, float n, int w);
 GLuint gen_plant_buffer(float x, float y, float z, float n, int w);
 GLuint gen_player_buffer(float x, float y, float z, float rx, float ry);
 GLuint gen_text_buffer(float x, float y, float n, char *text);
-void draw_triangles_3d_ao(Attrib *attrib, GLuint buffer, int count, int offset);
+void draw_triangles_3d_ao(Attrib *attrib, GLuint buffer, int count);
 void draw_triangles_3d_text(Attrib *attrib, GLuint buffer, int count);
 void draw_triangles_3d(Attrib *attrib, GLuint buffer, int count);
 void draw_triangles_2d(Attrib *attrib, GLuint buffer, int count);
 void draw_lines(Attrib *attrib, GLuint buffer, int components, int count);
 void draw_chunk(Attrib *attrib, Chunk *chunk);
-void draw_item(Attrib *attrib, GLuint buffer, int count, int offset);
+void draw_item(Attrib *attrib, GLuint buffer, int count);
 void draw_text(Attrib *attrib, GLuint buffer, int length);
 void draw_signs(Attrib *attrib, Chunk *chunk);
 void draw_sign(Attrib *attrib, GLuint buffer, int length);
-void draw_cube(Attrib *attrib, GLuint buffer, int offset);
+void draw_cube(Attrib *attrib, GLuint buffer);
+void draw_cube_offset(Attrib *attrib, GLuint buffer, int offset);
 void draw_plant(Attrib *attrib, GLuint buffer);
 void draw_player(Attrib *attrib, Player *player);
 Player *find_player(int id);
@@ -403,6 +404,7 @@ void reset_model();
 // NEW FUNCTIONS
 void create_ghost(Player *p);
 void delete_ghost(Player *p);
+int ghost_id(int pid);
 void render_players_hitboxes(Attrib *attrib, Player *p);
 void player_hitbox(
         float px, float py, float pz, float *x, float *y, float *z,

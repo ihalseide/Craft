@@ -284,9 +284,26 @@ GLuint gen_text_buffer(float x, float y, float n, char *text) {
 // - buffer: triangles data
 // - count: number of triangles
 // Returns: none
-void draw_triangles_3d_ao(
-        Attrib *attrib, GLuint buffer, int count, int offset) 
-{
+void draw_triangles_3d_ao(Attrib *attrib, GLuint buffer, int count) {
+    glBindBuffer(GL_ARRAY_BUFFER, buffer);
+    glEnableVertexAttribArray(attrib->position);
+    glEnableVertexAttribArray(attrib->normal);
+    glEnableVertexAttribArray(attrib->uv);
+    glVertexAttribPointer(attrib->position, 3, GL_FLOAT, GL_FALSE,
+        sizeof(GLfloat) * 10, 0);
+    glVertexAttribPointer(attrib->normal, 3, GL_FLOAT, GL_FALSE,
+        sizeof(GLfloat) * 10, (GLvoid *)(sizeof(GLfloat) * 3));
+    glVertexAttribPointer(attrib->uv, 4, GL_FLOAT, GL_FALSE,
+        sizeof(GLfloat) * 10, (GLvoid *)(sizeof(GLfloat) * 6));
+    glDrawArrays(GL_TRIANGLES, 0, count);
+    glDisableVertexAttribArray(attrib->position);
+    glDisableVertexAttribArray(attrib->normal);
+    glDisableVertexAttribArray(attrib->uv);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+}
+
+void draw_cube_offset(Attrib *attrib, GLuint buffer, int offset) {
+    int count = 36;
     glBindBuffer(GL_ARRAY_BUFFER, buffer);
     glEnableVertexAttribArray(attrib->position);
     glEnableVertexAttribArray(attrib->normal);
@@ -390,14 +407,14 @@ void draw_lines(Attrib *attrib, GLuint buffer, int components, int count) {
 // Returns: none
 void draw_chunk(Attrib *attrib, Chunk *chunk) {
     int offset = 0;
-    draw_triangles_3d_ao(attrib, chunk->buffer, chunk->faces * 6, offset);
+    draw_triangles_3d_ao(attrib, chunk->buffer, chunk->faces * 6);
 }
 
 // Draw a block (item), which can be a plant shape or a cube shape
 // Arguments:
 // Returns: none
-void draw_item(Attrib *attrib, GLuint buffer, int count, int offset) {
-    draw_triangles_3d_ao(attrib, buffer, count, offset);
+void draw_item(Attrib *attrib, GLuint buffer, int count) {
+    draw_triangles_3d_ao(attrib, buffer, count);
 }
 
 // Draw 2D text
@@ -433,8 +450,8 @@ void draw_sign(Attrib *attrib, GLuint buffer, int length) {
 // Draw a cube block model
 // Arguments:
 // Returns: none
-void draw_cube(Attrib *attrib, GLuint buffer, int offset) {
-    draw_item(attrib, buffer, 36, offset);
+void draw_cube(Attrib *attrib, GLuint buffer) {
+    draw_item(attrib, buffer, 36);
 }
 
 // Draw a plant block model
@@ -442,7 +459,7 @@ void draw_cube(Attrib *attrib, GLuint buffer, int offset) {
 // Returns: none
 void draw_plant(Attrib *attrib, GLuint buffer) {
     int offset = 0;
-    draw_item(attrib, buffer, 24, offset);
+    draw_item(attrib, buffer, 24);
 }
 
 // Draw a player model
@@ -451,8 +468,8 @@ void draw_plant(Attrib *attrib, GLuint buffer) {
 // - player
 // Returns: none
 void draw_player(Attrib *attrib, Player *player) {
-    draw_cube(attrib, player->buffer, 0);
-    draw_cube(attrib, player->buffer, 36);
+    draw_cube_offset(attrib, player->buffer, 0);
+    draw_cube_offset(attrib, player->buffer, 36);
 }
 
 // Find a player with a certain id
@@ -2250,7 +2267,7 @@ void render_item(Attrib *attrib) {
     }
     else {
         GLuint buffer = gen_cube_buffer(0, 0, 0, 0.5, w);
-        draw_cube(attrib, buffer, 0);
+        draw_cube(attrib, buffer);
         del_buffer(buffer);
     }
 }
