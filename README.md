@@ -1,4 +1,4 @@
-## Craft
+## MisCraft
 
 This is a fork of fogleman/Craft.
 
