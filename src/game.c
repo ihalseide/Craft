@@ -2128,15 +2128,9 @@ void render_wireframe(Attrib *attrib, Player *player) {
 
 // Get a player's hitbox (center and extents)
 // Arguments:
-// - px: the player's x position
-// - py: the player's y position
-// - pz: the player's z position
-// - x: pointer to output hitbox center x to
-// - y: pointer to output hitbox center y to
-// - z: pointer to output hitbox center z to
-// - ex: pointer to output hitbox x extent to
-// - ey: pointer to output hitbox y extent to
-// - ez: pointer to output hitbox z extent to
+// - px, py, pz: the player's position
+// - x, y, z: pointers to output hitbox center to
+// - ex, ey, ez: pointer to output hitbox extents to
 // Returns:
 // - modifies values pointed to by x, y, z, ex, ey, and ez
 void player_hitbox(
@@ -2151,7 +2145,13 @@ void player_hitbox(
     *ez = PLAYER_WIDTH;
 }
 
-// Set player position from hitbox center point (inverse of player_hitbox())
+// Player position inverse. Set player position from hitbox center point
+// (inverse of player_hitbox()).
+// Arguments:
+// - x, y, z: hitbox position to convert into player position
+// - px, py, pz: pointer to player position to modify
+// Returns:
+// - modifies values pointed to by px, py, and pz
 void player_pos_inv(float x, float y, float z, float *px, float *py, float *pz)
 {
     *px = x;
@@ -3096,20 +3096,19 @@ void handle_movement2(double dt) {
 // my movement handling code
 void handle_movement(double dt) {
     State *s = &g->players->state;
-    int sz = 0;
-    int sx = 0;
+    int sz = 0, sx = 0;
     if (!g->typing) {
         float m = dt * 1.0;
         g->ortho = glfwGetKey(g->window, CRAFT_KEY_ORTHO) ? 64 : 0;
         g->fov = glfwGetKey(g->window, CRAFT_KEY_ZOOM) ? 15 : 65;
-        if (glfwGetKey(g->window, CRAFT_KEY_FORWARD)) sz--;
-        if (glfwGetKey(g->window, CRAFT_KEY_BACKWARD)) sz++;
-        if (glfwGetKey(g->window, CRAFT_KEY_LEFT)) sx--;
-        if (glfwGetKey(g->window, CRAFT_KEY_RIGHT)) sx++;
-        if (glfwGetKey(g->window, GLFW_KEY_LEFT)) s->rx -= m;
-        if (glfwGetKey(g->window, GLFW_KEY_RIGHT)) s->rx += m;
-        if (glfwGetKey(g->window, GLFW_KEY_UP)) s->ry += m;
-        if (glfwGetKey(g->window, GLFW_KEY_DOWN)) s->ry -= m;
+        if (glfwGetKey(g->window, CRAFT_KEY_FORWARD))  { sz--; }
+        if (glfwGetKey(g->window, CRAFT_KEY_BACKWARD)) { sz++; }
+        if (glfwGetKey(g->window, CRAFT_KEY_LEFT))     { sx--; }
+        if (glfwGetKey(g->window, CRAFT_KEY_RIGHT))    { sx++; }
+        if (glfwGetKey(g->window, GLFW_KEY_LEFT))      { s->rx -= m; }
+        if (glfwGetKey(g->window, GLFW_KEY_RIGHT))     { s->rx += m; }
+        if (glfwGetKey(g->window, GLFW_KEY_UP))        { s->ry += m; }
+        if (glfwGetKey(g->window, GLFW_KEY_DOWN))      { s->ry -= m; }
     }
     // Get acceleration motion from the inputs
     float ax, ay, az;
@@ -3120,6 +3119,7 @@ void handle_movement(double dt) {
         float fay = 1;
         // Jump acceleration Y
         float jay = 18;
+        // Handle jump or fly up
         if (glfwGetKey(g->window, CRAFT_KEY_JUMP)) {
             if (s->flying)
             {
@@ -3129,6 +3129,7 @@ void handle_movement(double dt) {
                 ay = jay;
             }
         }
+        // Handle fly down
         if (glfwGetKey(g->window, CRAFT_KEY_CROUCH)) {
             if (s->flying)
             {
@@ -3136,74 +3137,72 @@ void handle_movement(double dt) {
             }
         }
     }
-    // Reset this flag because collision will determine it
+    // Reset this flag because collision will set it if necessary.
     s->is_grounded = 0;
-    float speed = s->flying ? 100 : 50;
-    // Add acceleration to velocity
-    s->vx += ax * speed * dt;
-    s->vy += ay * speed * dt;
-    s->vz += az * speed * dt;
-    // Apply gravity
-    if (!s->flying)
+    // Add acceleration from input motion to velocity
     {
+        float speed = s->flying ? 100 : 50;
+        s->vx += ax * speed * dt;
+        s->vy += ay * speed * dt;
+        s->vz += az * speed * dt;
+    }
+    // Apply gravity
+    if (!s->flying) {
         float gravity = 55;
         s->vy -= gravity * dt;
     }
-    // Set a minimum velocity for velocity to be clamped to 0
-    float v_min_sq = 0.01;
-    if (powf(s->vx,2) + powf(s->vy,2) + powf(s->vz,2) <= v_min_sq)
+    // Set a minimum velocity (squared) for velocity to be clamped to 0
     {
-        s->vx = 0;
-        s->vy = 0;
-        s->vz = 0;
+        float vminsq = 0.01;
+        if (powf(s->vx,2) + powf(s->vy,2) + powf(s->vz,2) <= vminsq ) {
+            s->vx = 0;
+            s->vy = 0;
+            s->vz = 0;
+        }
     }
-    // Decay velocity
-    if (s->flying)
-    {
+    // Decay velocity differently for flying or not flying
+    if (s->flying) {
+        // "r" = resistance factor
         float r = 2.5 * dt;
         s->vx -= s->vx * r;
         s->vy -= s->vy * r;
         s->vz -= s->vz * r;
     }
-    else
-    {
-        // horizontal resistance factor
+    else {
+        // "rh" = horizontal resistance factor
         float rh = 4.5 * dt;
-        // vertical resistance factor
+        // "rv" = vertical resistance factor
         float rv = 0.21 * dt;
         s->vx -= s->vx * rh;
         s->vy -= s->vy * rv;
         s->vz -= s->vz * rh;
     }
     // Set a maximum y velocity
-    if (fabs(s->vy) > 150)
     {
-        s->vy = 150 * SIGN(s->vy);
+        float vy_max = 150;
+        if (fabs(s->vy) > vy_max) {
+            s->vy = vy_max * SIGN(s->vy);
+        }
     }
     // Get player hitbox
     float bx, by, bz, ex, ey, ez;
     player_hitbox(s->x, s->y, s->z, &bx, &by, &bz, &ex, &ey, &ez);
-    //// Static collision
-    //int cx, cy, cz;
-    //s->is_blocked = box_intersect_world(bx, by, bz, ex, ey, ez, &cx, &cy, &cz);
-    //if (s->is_blocked)
-    //{
-    //    s->vx = 0;
-    //    s->vy = 0;
-    //    s->vz = 0;
-    //}
     // Handle dynamic collision
+    // "nx", "ny", "nz" = normal vector from swept collision
     float nx, ny, nz;
+    // "t" = collision time relative to this frame (between 0.0 and 1.0)
     float t = box_sweep_world(
                 bx, by, bz, ex, ey, ez, s->vx * dt, s->vy * dt, s->vz * dt,
                 &nx, &ny, &nz);
-    if (0.0 < t && t < 1.0)
+    // There is no collision this frame if "t == 1.0".
+    if (0.0 <= t && t < 1.0)
     {
         // There was a collision
-        int steps = 4;
-        float ut = dt / steps;
-        float oppose = 1.2 * ut;
-        float pad = 0.001;
+        // Do multiple collision steps per frame
+        const int steps = 4;
+        const float ut = dt / steps;
+        const float oppose = 1.2 * ut;
+        const float pad = 0.001;
         for (int i = 0; i < steps; i++)
         {
             t = box_sweep_world(
@@ -3247,7 +3246,7 @@ void handle_movement(double dt) {
     else
     {
         // There was no collision
-        // Add velocity to position
+        // Add full velocity to position
         s->x += s->vx * dt;
         s->y += s->vy * dt;
         s->z += s->vz * dt;
@@ -3421,14 +3420,14 @@ void reset_model() {
     memset(&g->info3, 0, sizeof(g->info3));
 }
 
-int ghost_id(int pid)
-{
+// DEBUG
+int ghost_id(int pid) {
     return -9999 + pid;
 }
 
+// DEBUG
 // Create a player model "ghost" for given player
-void create_ghost(Player *p)
-{
+void create_ghost(Player *p) {
     Player *player = g->players + g->player_count;
     g->player_count++;
     player->id = ghost_id(p->id);
@@ -3440,17 +3439,20 @@ void create_ghost(Player *p)
                     p->state.rx, p->state.ry, 1);
 }
 
-void delete_ghost(Player *p)
-{
+// DEBUG
+void delete_ghost(Player *p) {
     if (p)
     {
         delete_player(ghost_id(p->id));
     }
 }
 
+// DEBUG
 // SET CURRENTLY DRAWN HIT BOX THINGY
 // Arguments:
 // - n: box number
+// - x, y, z: box center
+// - ex, ey, ez: box extents
 void debug_set_info_box(
         int n, float x, float y, float z, float ex, float ey, float ez)
 {
@@ -3482,8 +3484,8 @@ void debug_set_info_box(
     }
 }
 
-void debug_set_info_box_active(int n, int active)
-{
+// DEBUG
+void debug_set_info_box_active(int n, int active) {
     DebugBox *box;
     switch(n)
     {
@@ -3502,7 +3504,13 @@ void debug_set_info_box_active(int n, int active)
     box->active = active != 0;
 }
 
-// Get whether a certain block face is exposed
+// Get whether a certain block face is covered or exposed.
+// A face is exposed unless an obstacle block is in front of it.
+// Arguments:
+// - x, y, z: block to check
+// - nx, ny, nz: normal of the block's face to check
+// Returns:
+// - non-zero if the given block face is covered
 int is_block_face_covered(int x, int y, int z, float nx, float ny, float nz) {
     assert(nx != 0.0 || ny != 0.0 || nz != 0.0);
     int w = get_block(roundf(x + nx), roundf(y + ny), roundf(z + nz));
@@ -3510,7 +3518,10 @@ int is_block_face_covered(int x, int y, int z, float nx, float ny, float nz) {
 }
 
 // Return whether a bounding box currently intersects a block in the world.
-// Returns block location through cx, cy, cz
+// Arguments:
+// - x, y, z: box center position
+// - ex, ey, ez: box extents
+// Returns: intersected block location through cx, cy, cz
 int box_intersect_world(
         float x, float y, float z, float ex, float ey, float ez,
         int *cx, int *cy, int *cz)
@@ -3542,6 +3553,7 @@ int box_intersect_world(
                     *cx = bx;
                     *cy = by;
                     *cz = bz;
+                    // Collision did happen
                     result = 1;
                 }
             }
@@ -3580,7 +3592,7 @@ float box_sweep_world(
             &bbex, &bbey, &bbez);
 
     // DEBUG
-    debug_set_info_box(3, bbx, bby, bbz, bbex, bbey, bbez);
+    //debug_set_info_box(3, bbx, bby, bbz, bbex, bbey, bbez);
 
     // Current block that the bounding box is inside of
     int cx, cy, cz;
@@ -3637,7 +3649,7 @@ float box_sweep_world(
                     *nz = snz;
 
                     // DEBUG
-                    debug_set_info_box(2, bx, by, bz, 0.5, 0.5, 0.5);
+                    //debug_set_info_box(2, bx, by, bz, 0.5, 0.5, 0.5);
                 }
             }
         }
