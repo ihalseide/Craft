@@ -271,7 +271,7 @@ void make_player(
     mat_rotate(mb, cosf(rx), 0, sinf(rx), -ry);
     mat_multiply(ma, mb, ma);
     // Translate
-    mat_translate(mb, x, y, z);
+    mat_translate(mb, x, y + 1, z);
     mat_multiply(ma, mb, ma);
     mat_apply(data, ma, 36, 0, 10);
     // Make a player body
@@ -279,7 +279,7 @@ void make_player(
     make_cube_faces(
         data + offset, ao, light,
         1, 1, 1, 1, 1, 1,
-        226, 224, 241, 209, 225, 227,
+        230, 228, 245, 0, 0, 0,
         0, 0, 0, 1);
     mat_translate(ma, x, y-1, z);
     mat_scale(mb, 0.4, 1.0, 0.4);
