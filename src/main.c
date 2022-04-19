@@ -212,7 +212,9 @@ int main(int argc, char **argv) {
         g->player_count = 1;
 
         // LOAD STATE FROM DATABASE //
-        int loaded = db_load_state(&s->x, &s->y, &s->z, &s->rx, &s->ry, &s->flying);
+        int loaded = db_load_state(
+                &s->x, &s->y, &s->z, &s->rx, &s->ry, &s->flying);
+        s->brx = s->rx;
         force_chunks(me);
         if (!loaded) {
             s->y = highest_block(s->x, s->z) + 2;
@@ -270,7 +272,8 @@ int main(int argc, char **argv) {
             g->observe2 = g->observe2 % g->player_count;
             delete_chunks();
             del_buffer(me->buffer);
-            me->buffer = gen_player_buffer(s->x, s->y, s->z, s->rx, s->ry);
+            me->buffer = gen_player_buffer(
+                    s->x, s->y, s->z, s->rx, s->ry, s->brx);
             for (int i = 1; i < g->player_count; i++) {
                 interpolate_player(g->players + i);
             }

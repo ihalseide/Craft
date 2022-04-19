@@ -250,12 +250,14 @@ GLuint gen_plant_buffer(float x, float y, float z, float n, int w) {
 // - ry: player rotation y
 // Returns:
 // - OpenGL buffer handle
-GLuint gen_player_buffer(float x, float y, float z, float rx, float ry) {
+GLuint gen_player_buffer(
+        float x, float y, float z, float rx, float ry, float brx) 
+{
     // Player model is just a cube
     // Each face has 10 component float properties.
     // A cube/box model has 6 faces
     GLfloat *data = malloc_faces(10, 2*2*6);
-    make_player(data, x, y, z, rx, ry);
+    make_player(data, x, y, z, rx, ry, brx);
     return gen_faces(10, 2*6, data);
 }
 
@@ -516,7 +518,8 @@ void update_player(Player *player,
         State *s = &player->state;
         s->x = x; s->y = y; s->z = z; s->rx = rx; s->ry = ry;
         del_buffer(player->buffer);
-        player->buffer = gen_player_buffer(s->x, s->y, s->z, s->rx, s->ry);
+        player->buffer = gen_player_buffer(
+                s->x, s->y, s->z, s->rx, s->ry, s->brx);
     }
 }
 
@@ -3022,6 +3025,7 @@ void create_window() {
 void handle_mouse_input() {
     int exclusive =
         glfwGetInputMode(g->window, GLFW_CURSOR) == GLFW_CURSOR_DISABLED;
+    // Previous values
     static double px = 0;
     static double py = 0;
     State *s = &g->players->state;
@@ -3036,12 +3040,25 @@ void handle_mouse_input() {
         else {
             s->ry -= (my - py) * m;
         }
+        // Keep rx in a nice range
         if (s->rx < 0) {
             s->rx += RADIANS(360);
         }
         if (s->rx >= RADIANS(360)){
             s->rx -= RADIANS(360);
         }
+        // Update body rotation
+        if (fabs(s->rx - s->brx) > 0.8) {
+            // move
+            s->brx += (mx - px) * m;
+        }
+        if (s->brx < 0) {
+            s->brx += RADIANS(360);
+        }
+        if (s->brx >= RADIANS(360)){
+            s->brx -= RADIANS(360);
+        }
+        // Clamp ry
         s->ry = MAX(s->ry, -RADIANS(90));
         s->ry = MIN(s->ry, RADIANS(90));
         px = mx;
@@ -3052,69 +3069,7 @@ void handle_mouse_input() {
     }
 }
 
-// Arguments:
-// - dt: delta time
-// Returns: none
-void handle_movement2(double dt) {
-    static float dy = 0;
-    State *s = &g->players->state;
-    int sz = 0;
-    int sx = 0;
-    if (!g->typing) {
-        float m = dt * 1.0;
-        g->ortho = glfwGetKey(g->window, CRAFT_KEY_ORTHO) ? 64 : 0;
-        g->fov = glfwGetKey(g->window, CRAFT_KEY_ZOOM) ? 15 : 65;
-        if (glfwGetKey(g->window, CRAFT_KEY_FORWARD)) sz--;
-        if (glfwGetKey(g->window, CRAFT_KEY_BACKWARD)) sz++;
-        if (glfwGetKey(g->window, CRAFT_KEY_LEFT)) sx--;
-        if (glfwGetKey(g->window, CRAFT_KEY_RIGHT)) sx++;
-        if (glfwGetKey(g->window, GLFW_KEY_LEFT)) s->rx -= m;
-        if (glfwGetKey(g->window, GLFW_KEY_RIGHT)) s->rx += m;
-        if (glfwGetKey(g->window, GLFW_KEY_UP)) s->ry += m;
-        if (glfwGetKey(g->window, GLFW_KEY_DOWN)) s->ry -= m;
-    }
-    float vx, vy, vz;
-    get_motion_vector(s->flying, sz, sx, s->rx, s->ry, &vx, &vy, &vz);
-    if (!g->typing) {
-        if (glfwGetKey(g->window, CRAFT_KEY_JUMP)) {
-            if (s->flying) {
-                vy = 1;
-            }
-            else if (dy == 0) {
-                dy = 8;
-            }
-        }
-    }
-    float speed = s->flying ? 20 : 5;
-    int estimate = roundf(sqrtf(
-        powf(vx * speed, 2) +
-        powf(vy * speed + ABS(dy) * 2, 2) +
-        powf(vz * speed, 2)) * dt * 8);
-    int step = MAX(8, estimate);
-    float ut = dt / step;
-    vx = vx * ut * speed;
-    vy = vy * ut * speed;
-    vz = vz * ut * speed;
-    for (int i = 0; i < step; i++) {
-        if (s->flying) {
-            dy = 0;
-        }
-        else {
-            dy -= ut * 25;
-            dy = MAX(dy, -250);
-        }
-        s->x += vx;
-        s->y += vy + dy * ut;
-        s->z += vz;
-        if (collide(2, &s->x, &s->y, &s->z)) {
-            dy = 0;
-        }
-    }
-    if (s->y < 0) {
-        s->y = highest_block(s->x, s->z) + 2;
-    }
-}
-
+// TODO: rotate player body in movement direction.
 // my movement handling code
 void handle_movement(double dt) {
     State *s = &g->players->state;
@@ -3459,6 +3414,7 @@ void create_ghost(Player *p) {
                     p->state.rx, p->state.ry, 1);
     update_player(player, p->state.x, p->state.y, p->state.z,
                     p->state.rx, p->state.ry, 1);
+    player->state.brx = player->state.rx;
 }
 
 // DEBUG

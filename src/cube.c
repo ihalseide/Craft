@@ -235,16 +235,14 @@ void make_plant(
 // Make a player model
 // Arguments:
 // - data: output pointer
-// - x:
-// - y:
-// - z:
-// - rx:
-// - ry:
+// - x, y, z: player position
+// - rx, ry: rotation x and y
+// - brx: body rotation x
 // Returns:
 // - writes specific values to the data pointer
 void make_player(
     float *data,
-    float x, float y, float z, float rx, float ry)
+    float x, float y, float z, float rx, float ry, float brx)
 {
     float ao[6][4] = {0};
     float light[6][4] = {
@@ -261,7 +259,7 @@ void make_player(
         data, ao, light,
         1, 1, 1, 1, 1, 1,
         226, 224, 241, 209, 225, 227,
-        0, 0, 0, 0.4);
+        0, 0, 0, 0.35);
     float ma[16];
     float mb[16];
     // Rotate
@@ -271,7 +269,7 @@ void make_player(
     mat_rotate(mb, cosf(rx), 0, sinf(rx), -ry);
     mat_multiply(ma, mb, ma);
     // Translate
-    mat_translate(mb, x, y + 1, z);
+    mat_translate(mb, x, y, z);
     mat_multiply(ma, mb, ma);
     mat_apply(data, ma, 36, 0, 10);
     // Make a player body
@@ -279,10 +277,12 @@ void make_player(
     make_cube_faces(
         data + offset, ao, light,
         1, 1, 1, 1, 1, 1,
-        230, 228, 245, 0, 0, 0,
+        230, 228, 245, 213, 229, 231,
         0, 0, 0, 1);
-    mat_translate(ma, x, y-1, z);
-    mat_scale(mb, 0.4, 1.0, 0.4);
+    mat_translate(ma, x, y - 0.70, z);
+    mat_rotate(mb, 0, 1, 0, brx);
+    mat_multiply(ma, ma, mb);
+    mat_scale(mb, 0.32, 0.41, 0.20);
     mat_multiply(ma, ma, mb);
     mat_apply(data, ma, 36, offset, 10);
 }

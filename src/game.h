@@ -106,15 +106,13 @@ typedef struct {
 } Block;
 
 // State for a player
-// - x: x position (player feet level)
-// - y: y position (player feet level)
-// - z: z position (player feet level)
-// - rx: rotation x
-// - ry: rotation y
+// - x, y, z: position
+// - rx, ry: rotation x and y
 // - t: keep track of time, for interpolation
 // - is_grounded: flag for if on the ground and can jump
 // - is_blocked: flag for if stuck in a block
 // - flying: flag for if flying
+// - bry: body rotation x
 typedef struct {
     float x; 
     float y;
@@ -128,6 +126,7 @@ typedef struct {
     int is_grounded;
     int is_blocked;
     int flying;
+    float brx;
 } State;
 
 // Player
@@ -288,7 +287,8 @@ GLuint gen_wireframe_buffer(float x, float y, float z, float n);
 GLuint gen_sky_buffer();
 GLuint gen_cube_buffer(float x, float y, float z, float n, int w);
 GLuint gen_plant_buffer(float x, float y, float z, float n, int w);
-GLuint gen_player_buffer(float x, float y, float z, float rx, float ry);
+GLuint gen_player_buffer(
+        float x, float y, float z, float rx, float ry, float brx);
 GLuint gen_text_buffer(float x, float y, float n, char *text);
 void draw_triangles_3d_ao(Attrib *attrib, GLuint buffer, int count);
 void draw_triangles_3d_text(Attrib *attrib, GLuint buffer, int count);
