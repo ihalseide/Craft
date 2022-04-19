@@ -909,21 +909,20 @@ int collide(int height, float *x, float *y, float *z) {
 // block position.
 // Arguments:
 // - height
-// - x: player x position
-// - y: player y position
-// - z: player z position
-// - hx: block x position to test
-// - hy: block y position to test
-// - hz: block z position to test
+// - x, y, z: player position
+// - vx, vy, vz: player velocity
+// - hx, hy, hz: block position to test
 // Returns:
 // - non-zero if the player intersects the given block position
 int player_intersects_block(
-    int height,
     float x, float y, float z,
+    float vx, float vy, float vz,
     int hx, int hy, int hz)
 {
     float bx, by, bz, ex, ey, ez;
     player_hitbox(x, y, z, &bx, &by, &bz, &ex, &ey, &ez);
+    box_broadphase(bx, by, bz, ex, ey, ez, vx, vy, vz, &bx, &by, &bz,
+            &ex, &ey, &ez);
     return box_intersect_block(bx, by, bz, ex, ey, ez, hx, hy, hz);
 }
 
@@ -2744,7 +2743,7 @@ void on_right_click() {
     int hx, hy, hz;
     int hw = hit_test(1, s->x, s->y, s->z, s->rx, s->ry, &hx, &hy, &hz);
     if (hy > 0 && hy < 256 && is_obstacle(hw)) {
-        if (!player_intersects_block(2, s->x, s->y, s->z, hx, hy, hz)) {
+        if (!player_intersects_block(s->x, s->y, s->z, s->vx, s->vy, s->vz, hx, hy, hz)) {
             set_block(hx, hy, hz, items[g->item_index]);
             record_block(hx, hy, hz, items[g->item_index]);
         }
@@ -3117,20 +3116,23 @@ void handle_movement(double dt) {
     get_motion_vector(s->flying, sz, sx, s->rx, s->ry, &ax, &ay, &az);
     // Handle jump/fly
     if (!g->typing) {
+        // Flying acceleration Y
+        float fay = 1;
+        // Jump acceleration Y
+        float jay = 18;
         if (glfwGetKey(g->window, CRAFT_KEY_JUMP)) {
             if (s->flying)
             {
-                ay = 1;
+                ay = fay;
             }
             else if (s->is_grounded) {
-                // Jump acceleration
-                ay = 15;
+                ay = jay;
             }
         }
         if (glfwGetKey(g->window, CRAFT_KEY_CROUCH)) {
             if (s->flying)
             {
-                ay = -1;
+                ay = -fay;
             }
         }
     }
@@ -3181,8 +3183,15 @@ void handle_movement(double dt) {
     // Get player hitbox
     float bx, by, bz, ex, ey, ez;
     player_hitbox(s->x, s->y, s->z, &bx, &by, &bz, &ex, &ey, &ez);
+    //// Static collision
     //int cx, cy, cz;
     //s->is_blocked = box_intersect_world(bx, by, bz, ex, ey, ez, &cx, &cy, &cz);
+    //if (s->is_blocked)
+    //{
+    //    s->vx = 0;
+    //    s->vy = 0;
+    //    s->vz = 0;
+    //}
     // Handle dynamic collision
     float nx, ny, nz;
     float t = box_sweep_world(
@@ -3191,10 +3200,10 @@ void handle_movement(double dt) {
     if (0.0 < t && t < 1.0)
     {
         // There was a collision
-        //printf("Collide! %f\n", dt);
-        int steps = 6;
+        int steps = 4;
         float ut = dt / steps;
-        float pad = 1.2 * ut;
+        float oppose = 1.2 * ut;
+        float pad = 0.001;
         for (int i = 0; i < steps; i++)
         {
             t = box_sweep_world(
@@ -3204,21 +3213,22 @@ void handle_movement(double dt) {
             bx += s->vx * t * ut;
             by += s->vy * t * ut;
             bz += s->vz * t * ut;
-            // Respond to the collision normal by stopping velocity in that
-            // direction.
             // Offset the box by pad to prevent the hitbox from being exactly
             // next to a block edge
+            // Respond to the collision normal by opposing velocity in that
+            // direction.
             if (nx != 0.0)
             {
                 // In x direction
-                bx += nx * 0.001;
-                s->vx = nx * pad;
+                bx += nx * pad;
+                s->vx = nx * oppose;
             }
             else if (ny != 0.0)
             {
                 // In y direction
-                by += ny * 0.001;
-                s->vy = ny * pad;
+                by += ny * pad;
+                s->vy = ny * oppose;
+                // Detect hitting a floor
                 if (ny > 0)
                 {
                     s->is_grounded = 1;
@@ -3227,8 +3237,8 @@ void handle_movement(double dt) {
             else if (nz != 0.0)
             {
                 // In z direction
-                bz += nz * 0.001;
-                s->vz = nz * pad;
+                bz += nz * pad;
+                s->vz = nz * oppose;
             }
         }
         // Update player position
@@ -3298,7 +3308,9 @@ void parse_buffer(char *buffer) {
             &bp, &bq, &bx, &by, &bz, &bw) == 6)
         {
             _set_block(bp, bq, bx, by, bz, bw, 0);
-            if (player_intersects_block(2, s->x, s->y, s->z, bx, by, bz)) {
+            if (player_intersects_block(
+                        s->x, s->y, s->z, s->vx, s->vy, s->vz, bx, by, bz)) 
+            {
                 s->y = highest_block(s->x, s->z) + 2;
             }
         }
@@ -3530,6 +3542,7 @@ int box_intersect_world(
                     *cx = bx;
                     *cy = by;
                     *cz = bz;
+                    result = 1;
                 }
             }
         }
@@ -3538,7 +3551,7 @@ int box_intersect_world(
 }
 
 // Sweep moving bounding box with all nearby blocks in the world. Returns the
-// info for the earliest intersection.
+// info for the earliest intersection time.
 // Arguments:
 // - x, y, z: box center position
 // - ex, ey, ez: box extents
@@ -3566,6 +3579,7 @@ float box_sweep_world(
             x, y, z, ex, ey, ez, vx, vy, vz, &bbx, &bby, &bbz,
             &bbex, &bbey, &bbez);
 
+    // DEBUG
     debug_set_info_box(3, bbx, bby, bbz, bbex, bbey, bbez);
 
     // Current block that the bounding box is inside of
@@ -3577,8 +3591,6 @@ float box_sweep_world(
     int x0, y0, z0, x1, y1, z1;
     box_nearest_blocks(
             bbx, bby, bbz, bbex, bbey, bbez, &x0, &y0, &z0, &x1, &y1, &z1);
-    // Smallest distance squared
-    //float dsq = INFINITY;
     for (int bx = x0; bx <= x1; bx++) {
         for (int by = y0; by <= y1; by++) {
             for (int bz = z0; bz <= z1; bz++) {
@@ -3590,6 +3602,12 @@ float box_sweep_world(
                 // Only collide with obstacle blocks
                 int w = get_block(bx, by, bz);
                 if (!is_obstacle(w)) 
+                {
+                    continue;
+                }
+                // Box must intersect the broad-phase bounding box
+                if (!box_intersect_block(
+                            bbx, bby, bbz, bbex, bbey, bbez, bx, by, bz))
                 {
                     continue;
                 }
@@ -3617,6 +3635,8 @@ float box_sweep_world(
                     *nx = snx;
                     *ny = sny;
                     *nz = snz;
+
+                    // DEBUG
                     debug_set_info_box(2, bx, by, bz, 0.5, 0.5, 0.5);
                 }
             }

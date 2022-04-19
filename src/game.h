@@ -325,7 +325,9 @@ int hit_test(
 int hit_test_face(Player *player, int *x, int *y, int *z, int *face);
 int collide(int height, float *x, float *y, float *z);
 int player_intersects_block(
-        int height, float x, float y, float z, int hx, int hy, int hz);
+    float x, float y, float z,
+    float vx, float vy, float vz,
+    int hx, int hy, int hz);
 int _gen_sign_buffer(
         GLfloat *data, float x, float y, float z, int face, const char *text);
 void gen_sign_buffer(Chunk *chunk);
