@@ -274,6 +274,17 @@ void make_player(
     mat_translate(mb, x, y, z);
     mat_multiply(ma, mb, ma);
     mat_apply(data, ma, 36, 0, 10);
+    // Make a player body
+    const int offset = 36*10;
+    make_cube_faces(
+        data + offset, ao, light,
+        1, 1, 1, 1, 1, 1,
+        226, 224, 241, 209, 225, 227,
+        0, 0, 0, 1);
+    mat_translate(ma, x, y-1, z);
+    mat_scale(mb, 0.4, 1.0, 0.4);
+    mat_multiply(ma, ma, mb);
+    mat_apply(data, ma, 36, offset, 10);
 }
 
 // Make a 3D box wireframe model

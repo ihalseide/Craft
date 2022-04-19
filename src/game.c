@@ -253,10 +253,10 @@ GLuint gen_plant_buffer(float x, float y, float z, float n, int w) {
 GLuint gen_player_buffer(float x, float y, float z, float rx, float ry) {
     // Player model is just a cube
     // Each face has 10 component float properties.
-    // A cube model has 6 faces
-    GLfloat *data = malloc_faces(10, 6*2);
+    // A cube/box model has 6 faces
+    GLfloat *data = malloc_faces(10, 2*2*6);
     make_player(data, x, y, z, rx, ry);
-    return gen_faces(10, 6, data);
+    return gen_faces(10, 2*6, data);
 }
 
 // Create a 2D screen model for a text string
@@ -284,7 +284,9 @@ GLuint gen_text_buffer(float x, float y, float n, char *text) {
 // - buffer: triangles data
 // - count: number of triangles
 // Returns: none
-void draw_triangles_3d_ao(Attrib *attrib, GLuint buffer, int count) {
+void draw_triangles_3d_ao(
+        Attrib *attrib, GLuint buffer, int count, int offset) 
+{
     glBindBuffer(GL_ARRAY_BUFFER, buffer);
     glEnableVertexAttribArray(attrib->position);
     glEnableVertexAttribArray(attrib->normal);
@@ -295,7 +297,7 @@ void draw_triangles_3d_ao(Attrib *attrib, GLuint buffer, int count) {
         sizeof(GLfloat) * 10, (GLvoid *)(sizeof(GLfloat) * 3));
     glVertexAttribPointer(attrib->uv, 4, GL_FLOAT, GL_FALSE,
         sizeof(GLfloat) * 10, (GLvoid *)(sizeof(GLfloat) * 6));
-    glDrawArrays(GL_TRIANGLES, 0, count);
+    glDrawArrays(GL_TRIANGLES, offset, count);
     glDisableVertexAttribArray(attrib->position);
     glDisableVertexAttribArray(attrib->normal);
     glDisableVertexAttribArray(attrib->uv);
@@ -387,14 +389,15 @@ void draw_lines(Attrib *attrib, GLuint buffer, int components, int count) {
 // Arguments:
 // Returns: none
 void draw_chunk(Attrib *attrib, Chunk *chunk) {
-    draw_triangles_3d_ao(attrib, chunk->buffer, chunk->faces * 6);
+    int offset = 0;
+    draw_triangles_3d_ao(attrib, chunk->buffer, chunk->faces * 6, offset);
 }
 
 // Draw a block (item), which can be a plant shape or a cube shape
 // Arguments:
 // Returns: none
-void draw_item(Attrib *attrib, GLuint buffer, int count) {
-    draw_triangles_3d_ao(attrib, buffer, count);
+void draw_item(Attrib *attrib, GLuint buffer, int count, int offset) {
+    draw_triangles_3d_ao(attrib, buffer, count, offset);
 }
 
 // Draw 2D text
@@ -430,15 +433,16 @@ void draw_sign(Attrib *attrib, GLuint buffer, int length) {
 // Draw a cube block model
 // Arguments:
 // Returns: none
-void draw_cube(Attrib *attrib, GLuint buffer) {
-    draw_item(attrib, buffer, 36);
+void draw_cube(Attrib *attrib, GLuint buffer, int offset) {
+    draw_item(attrib, buffer, 36, offset);
 }
 
 // Draw a plant block model
 // Arguments:
 // Returns: none
 void draw_plant(Attrib *attrib, GLuint buffer) {
-    draw_item(attrib, buffer, 24);
+    int offset = 0;
+    draw_item(attrib, buffer, 24, offset);
 }
 
 // Draw a player model
@@ -447,7 +451,8 @@ void draw_plant(Attrib *attrib, GLuint buffer) {
 // - player
 // Returns: none
 void draw_player(Attrib *attrib, Player *player) {
-    draw_cube(attrib, player->buffer);
+    draw_cube(attrib, player->buffer, 0);
+    draw_cube(attrib, player->buffer, 36);
 }
 
 // Find a player with a certain id
@@ -2245,7 +2250,7 @@ void render_item(Attrib *attrib) {
     }
     else {
         GLuint buffer = gen_cube_buffer(0, 0, 0, 0.5, w);
-        draw_cube(attrib, buffer);
+        draw_cube(attrib, buffer, 0);
         del_buffer(buffer);
     }
 }

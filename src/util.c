@@ -103,7 +103,7 @@ GLfloat *malloc_faces(int components, int faces) {
 // Arguments:
 // - components: number of components per face
 // - faces: number of faces
-// - data: data to bind to OpenGL context
+// - data: data to bind to OpenGL context (and free)
 // Returns:
 // - OpenGL buffer handle
 GLuint gen_faces(int components, int faces, GLfloat *data) {
