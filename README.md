@@ -1,28 +1,34 @@
 ## MisCraft
 
-This is a fork of fogleman/Craft.
-
 Minecraft clone for Windows, Mac OS X and Linux. Just a few thousand lines of C using modern OpenGL (shaders). Online multiplayer support is included using a Python-based server.
 
 http://www.michaelfogleman.com/craft/
 
 ![Screenshot](https://i.imgur.com/SH7wcas.png)
 
+### Contributing
+
+Do Contribute!
+
+Contact ihalseide (hizak@pm.me) or make a pull request on GitHub. Let's make a game thing!
+
+Current vision:
+A survival/building/pvp game with emphasis on items and blocks.
+No partial blocks.
+
 ### Features
 
+* Multiplayer support!
 * Simple but nice looking terrain generation using perlin / simplex noise.
 * More than 10 types of blocks and more can be added easily.
 * Supports plants (grass, flowers, trees, etc.) and transparency (glass).
 * Simple clouds in the sky (they don't move).
 * Day / night cycles and a textured sky dome.
 * World changes persisted in a sqlite3 database.
-* Multiplayer support!
 
 ### Download
 
 Mac and Windows binaries are available on the website.
-
-http://www.michaelfogleman.com/craft/
 
 See below to run from source.
 
