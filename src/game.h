@@ -20,12 +20,25 @@
 #define WORKER_BUSY 1
 #define WORKER_DONE 2
 
-// Player hitbox extent
-#define PLAYER_WIDTH 0.4f
-#define PLAYER_HEIGHT 1.2f
-#define PLAYER_BLOCKHEIGHT 3
-// Difference between player's position and player's head/eye level
-#define PLAYER_HEADY 0.25f
+// Physiscs settings
+// - grav: gravity
+// - walksp: walking speed (horizontal)
+// - flysp: flying speed
+// - jumpaccel: accelaration to apply when the player jumps (vertical)
+// - flyr: flying resistance factor
+// - groundr: ground resistance factor when walking on ground (horizontal)
+// - airhr: air resistance horizontal factor when walking through air
+// - airvr: air resistance vertical factor when jumping/falling
+typedef struct {
+    float grav;
+    float walksp;
+    float flysp;
+    float jumpaccel;
+    float flyr;
+    float groundr;
+    float airhr;
+    float airvr;
+} PhysicsConfig;
 
 // World chunk data (big area of blocks)
 // - map: block hash map
@@ -269,6 +282,7 @@ typedef struct {
     DebugBox info1;
     DebugBox info2;
     DebugBox info3;
+    PhysicsConfig physics;
 } Model;
 
 // Game model pointer
@@ -324,7 +338,6 @@ int hit_test(
         int previous, float x, float y, float z, float rx, float ry,
         int *bx, int *by, int *bz);
 int hit_test_face(Player *player, int *x, int *y, int *z, int *face);
-int collide(int height, float *x, float *y, float *z);
 int player_intersects_block(
     float x, float y, float z,
     float vx, float vy, float vz,

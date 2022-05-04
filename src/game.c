@@ -876,60 +876,6 @@ int hit_test_face(Player *player, int *x, int *y, int *z, int *face) {
     return 0;
 }
 
-// Do block collision for a player.
-// Arguments:
-// - height: player height in blocks
-// - x: pointer to current player x position of feet
-// - y: pointer to current player y position of feet
-// - z: pointer to current player z position of feet
-// Returns:
-// - non-zero if the player collided with a block in the Y axis
-// - may modify the x, y, and z values
-int collide(int height, float *x, float *y, float *z) {
-    // Default result: no collision
-    int result = 0;
-    // Find the block map that the position is in
-    int p = chunked(*x);
-    int q = chunked(*z);
-    Chunk *chunk = find_chunk(p, q);
-    if (!chunk) {
-        return result;
-    }
-    Map *map = &chunk->map;
-    // Get the nearest block position
-    int nx = roundf(*x);
-    int ny = roundf(*y);
-    int nz = roundf(*z);
-    float px = *x - nx;
-    float py = *y - ny;
-    float pz = *z - nz;
-    float pad = 0.25;
-    // Check each block position within the player's height
-    for (int dy = 0; dy < height; dy++) {
-        if (px < -pad && is_obstacle(map_get(map, nx - 1, ny - dy, nz))) {
-            *x = nx - pad;
-        }
-        if (px > pad && is_obstacle(map_get(map, nx + 1, ny - dy, nz))) {
-            *x = nx + pad;
-        }
-        if (py < -pad && is_obstacle(map_get(map, nx, ny - dy - 1, nz))) {
-            *y = ny - pad;
-            result = 1;
-        }
-        if (py > pad && is_obstacle(map_get(map, nx, ny - dy + 1, nz))) {
-            *y = ny + pad;
-            result = 1;
-        }
-        if (pz < -pad && is_obstacle(map_get(map, nx, ny - dy, nz - 1))) {
-            *z = nz - pad;
-        }
-        if (pz > pad && is_obstacle(map_get(map, nx, ny - dy, nz + 1))) {
-            *z = nz + pad;
-        }
-    }
-    return result;
-}
-
 // Function to return whether a player position instersects the given
 // block position.
 // Arguments:
@@ -3069,8 +3015,8 @@ void handle_mouse_input() {
     }
 }
 
+// Player movement
 // TODO: rotate player body in movement direction.
-// my movement handling code
 void handle_movement(double dt) {
     State *s = &g->players->state;
     int sz = 0, sx = 0;
@@ -3092,41 +3038,35 @@ void handle_movement(double dt) {
     get_motion_vector(s->flying, sz, sx, s->rx, s->ry, &ax, &ay, &az);
     // Handle jump/fly
     if (!g->typing) {
-        // Flying acceleration Y
-        float fay = 1;
-        // Jump acceleration Y
-        float jay = 18;
         // Handle jump or fly up
         if (glfwGetKey(g->window, CRAFT_KEY_JUMP)) {
             if (s->flying)
             {
-                ay = fay;
+                ay = g->physics.flysp;
             }
             else if (s->is_grounded) {
-                ay = jay;
+                ay = g->physics.jumpaccel;
             }
         }
         // Handle fly down
         if (glfwGetKey(g->window, CRAFT_KEY_CROUCH)) {
             if (s->flying)
             {
-                ay = -fay;
+                ay = -g->physics.flysp;
             }
         }
     }
-    // Reset this flag because collision will set it if necessary.
-    s->is_grounded = 0;
     // Add acceleration from input motion to velocity
     {
-        float speed = s->flying ? 100 : 50;
-        s->vx += ax * speed * dt;
-        s->vy += ay * speed * dt;
-        s->vz += az * speed * dt;
+        // horizontal and vertical speed
+        float hspeed = s->flying? g->physics.flysp : g->physics.walksp;
+        s->vx += ax * hspeed * dt;
+        s->vz += az * hspeed * dt;
+        s->vy += ay * dt;
     }
     // Apply gravity
     if (!s->flying) {
-        float gravity = 55;
-        s->vy -= gravity * dt;
+        s->vy -= g->physics.grav * dt;
     }
     // Set a minimum velocity (squared) for velocity to be clamped to 0
     {
@@ -3139,20 +3079,17 @@ void handle_movement(double dt) {
     }
     // Decay velocity differently for flying or not flying
     if (s->flying) {
-        // "r" = resistance factor
-        float r = 2.5 * dt;
+        float r = g->physics.flyr * dt;
         s->vx -= s->vx * r;
         s->vy -= s->vy * r;
         s->vz -= s->vz * r;
     }
     else {
-        // "rh" = horizontal resistance factor
-        float rh = 4.5 * dt;
-        // "rv" = vertical resistance factor
-        float rv = 0.21 * dt;
+        // resistance horizontal factor, and resistance vertical factor
+        float rh = dt * (s->is_grounded? g->physics.groundr : g->physics.airhr);
         s->vx -= s->vx * rh;
-        s->vy -= s->vy * rv;
         s->vz -= s->vz * rh;
+        s->vy -= s->vy * g->physics.airvr * dt;
     }
     // Set a maximum y velocity
     {
@@ -3171,6 +3108,8 @@ void handle_movement(double dt) {
     float t = box_sweep_world(
                 bx, by, bz, ex, ey, ez, s->vx * dt, s->vy * dt, s->vz * dt,
                 &nx, &ny, &nz);
+    // Reset this flag because collision will set it if necessary.
+    s->is_grounded = 0;
     // There is no collision this frame if "t == 1.0".
     if (0.0 <= t && t < 1.0)
     {
@@ -3390,11 +3329,16 @@ void reset_model() {
     g->day_length = DAY_LENGTH;
     glfwSetTime(g->day_length / 3.0);
     g->time_changed = 1;
-
-    // debug
-    memset(&g->info1, 0, sizeof(g->info1));
-    memset(&g->info2, 0, sizeof(g->info2));
-    memset(&g->info3, 0, sizeof(g->info3));
+    // Default physics
+    memset(&g->physics, 0, sizeof(g->physics));
+    g->physics.flyr      = 3.0;
+    g->physics.airhr     = 3.4;
+    g->physics.airvr     = 0.1;
+    g->physics.groundr   = 4.1;
+    g->physics.flysp     = 100.0;
+    g->physics.walksp    = 50.0;
+    g->physics.grav      = 60.0;
+    g->physics.jumpaccel = 900.0;
 }
 
 // DEBUG
