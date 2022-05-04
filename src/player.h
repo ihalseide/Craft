@@ -23,6 +23,7 @@
 // - brx: body rotation x
 // - jumpt: last jump time (for limiting jump rate)
 // - blockt: last block placement time (for limiting rate)
+// - dblockt: last block break time (for limiting rate)
 // - autot: last automatic block break/placement
 typedef struct {
     float x; 
