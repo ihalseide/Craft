@@ -79,13 +79,12 @@ void make_cube_faces(
     };
     float *d = data;
     // Scale the texture atlas so that a 16x16 tile takes up the whole block
-    float s = 0.0625;
+    float s = 0.0625; // 1/16th
     float a = 0 + 1 / 2048.0;
     float b = s - 1 / 2048.0;
     int faces[6] = {left, right, top, bottom, front, back};
     int tiles[6] = {wleft, wright, wtop, wbottom, wfront, wback};
     for (int i = 0; i < 6; i++) {
-        // i is an index into the faces
         // Do not write to faces which were not specified.
         if (faces[i] == 0) {
             continue;
