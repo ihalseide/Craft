@@ -20,7 +20,8 @@
 // - is_grounded: flag for if on the ground and can jump
 // - is_blocked: flag for if stuck in a block
 // - flying: flag for if flying
-// - bry: body rotation x
+// - brx: body rotation x
+// - jumpt: last jump time (for limiting jump rate)
 typedef struct {
     float x; 
     float y;
@@ -35,6 +36,7 @@ typedef struct {
     int is_blocked;
     int flying;
     float brx;
+    float jumpt;
 } State;
 
 // Player

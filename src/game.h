@@ -33,6 +33,7 @@
 // - groundr: ground resistance factor when walking on ground (horizontal)
 // - airhr: air resistance horizontal factor when walking through air
 // - airvr: air resistance vertical factor when jumping/falling
+// - jumpcool: cool-down time between jumps
 typedef struct {
     float grav;
     float walksp;
@@ -42,6 +43,7 @@ typedef struct {
     float groundr;
     float airhr;
     float airvr;
+    float jumpcool;
 } PhysicsConfig;
 
 // World chunk data (big area of blocks)

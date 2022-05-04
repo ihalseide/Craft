@@ -2921,12 +2921,15 @@ void handle_movement(double dt) {
     if (!g->typing) {
         // Handle jump or fly up
         if (glfwGetKey(g->window, CRAFT_KEY_JUMP)) {
+            float t = glfwGetTime();
             if (s->flying)
             {
                 ay = g->physics.flysp;
             }
-            else if (s->is_grounded) {
+            else if (s->is_grounded && (t - s->jumpt > g->physics.jumpcool)) {
                 ay = g->physics.jumpaccel;
+                s->jumpt = t;
+                s->is_grounded = 0;
             }
         }
         // Handle fly down
@@ -3220,6 +3223,7 @@ void reset_model() {
     g->physics.walksp    = 50.0;
     g->physics.grav      = 60.0;
     g->physics.jumpaccel = 900.0;
+    g->physics.jumpcool  = 0.31;
 }
 
 // DEBUG
