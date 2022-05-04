@@ -1,9 +1,16 @@
 #ifndef _hitbox_h
 #define _hitbox_h
 
-void handle_collision(
-        float t, float nx, float ny, float nz, float *x, float *y, float *z,
-        float *vx, float *vy, float *vz);
+// Unused (for now)
+typedef struct {
+    float cx;
+    float cy;
+    float cz;
+    float ex;
+    float ey;
+    float ez;
+} Box;
+
 void box_nearest_blocks(
         float x, float y, float z, float ex, float ey, float ez,
         int *x0, int *y0, int *z0, int *x1, int *y1, int *z1);
