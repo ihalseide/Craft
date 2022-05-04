@@ -51,5 +51,6 @@
 #define DELETE_CHUNK_RADIUS 14
 #define CHUNK_SIZE 32
 #define COMMIT_INTERVAL 5
+#define MAX_NAME_LENGTH 32
 
 #endif

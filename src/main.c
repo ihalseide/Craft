@@ -12,6 +12,7 @@
 #include "db.h"
 #include "game.h"
 #include "util.h"
+#include "player.h"
 
 extern Model *g;
 
@@ -292,9 +293,6 @@ int main(int argc, char **argv) {
             if (SHOW_WIREFRAME) {
                 render_wireframe(&line_attrib, player);
                 render_players_hitboxes(&line_attrib, player);
-                render_box_wireframe(&line_attrib, &g->info1, player);
-                render_box_wireframe(&line_attrib, &g->info2, player);
-                render_box_wireframe(&line_attrib, &g->info3, player);
             }
 
             // RENDER HUD //

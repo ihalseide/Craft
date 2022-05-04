@@ -1,11 +1,15 @@
 #ifndef _game_h_
 #define _game_h_
 
+#include "player.h"
+#include "config.h"
+#include <GL/glew.h>
+#include <GLFW/glfw3.h>
+
 #define MAX_CHUNKS 8192
 #define MAX_PLAYERS 128
 #define WORKERS 4
 #define MAX_TEXT_LENGTH 256
-#define MAX_NAME_LENGTH 32
 #define MAX_PATH_LENGTH 256
 #define MAX_ADDR_LENGTH 256
 
@@ -117,46 +121,6 @@ typedef struct {
     int z;
     int w;
 } Block;
-
-// State for a player
-// - x, y, z: position
-// - rx, ry: rotation x and y
-// - t: keep track of time, for interpolation
-// - is_grounded: flag for if on the ground and can jump
-// - is_blocked: flag for if stuck in a block
-// - flying: flag for if flying
-// - bry: body rotation x
-typedef struct {
-    float x; 
-    float y;
-    float z;
-    float rx;
-    float ry;
-    float vx;
-    float vy;
-    float vz;
-    float t; 
-    int is_grounded;
-    int is_blocked;
-    int flying;
-    float brx;
-} State;
-
-// Player
-// - id
-// - name: name string buffer
-// - state: current player position state
-// - state1: another state, for interpolation
-// - state2: another state, for interpolation
-// - buffer: some GL buffer id (?)
-typedef struct {
-    int id;
-    char name[MAX_NAME_LENGTH];
-    State state;
-    State state1;
-    State state2;
-    GLuint buffer;
-} Player;
 
 // OpenGL attribute data
 // - program:
@@ -277,11 +241,6 @@ typedef struct {
     Block block1;
     Block copy0;
     Block copy1;
-
-    // temporary for debugging
-    DebugBox info1;
-    DebugBox info2;
-    DebugBox info3;
     PhysicsConfig physics;
 } Model;
 
@@ -301,8 +260,6 @@ GLuint gen_wireframe_buffer(float x, float y, float z, float n);
 GLuint gen_sky_buffer();
 GLuint gen_cube_buffer(float x, float y, float z, float n, int w);
 GLuint gen_plant_buffer(float x, float y, float z, float n, int w);
-GLuint gen_player_buffer(
-        float x, float y, float z, float rx, float ry, float brx);
 GLuint gen_text_buffer(float x, float y, float n, char *text);
 void draw_triangles_3d_ao(Attrib *attrib, GLuint buffer, int count);
 void draw_triangles_3d_text(Attrib *attrib, GLuint buffer, int count);
@@ -315,13 +272,9 @@ void draw_text(Attrib *attrib, GLuint buffer, int length);
 void draw_signs(Attrib *attrib, Chunk *chunk);
 void draw_sign(Attrib *attrib, GLuint buffer, int length);
 void draw_cube(Attrib *attrib, GLuint buffer);
-void draw_cube_offset(Attrib *attrib, GLuint buffer, int offset);
 void draw_plant(Attrib *attrib, GLuint buffer);
 void draw_player(Attrib *attrib, Player *player);
 Player *find_player(int id);
-void update_player(
-        Player *player, float x, float y, float z, float rx, float ry,
-        int interpolate); void interpolate_player(Player *player);
 void delete_player(int id);
 void delete_all_players();
 float player_player_distance(Player *p1, Player *p2);
@@ -418,14 +371,9 @@ void reset_model();
 void create_ghost(Player *p);
 void delete_ghost(Player *p);
 int ghost_id(int pid);
+void draw_cube_offset(Attrib *attrib, GLuint buffer, int offset);
 void render_players_hitboxes(Attrib *attrib, Player *p);
-void player_hitbox(
-        float px, float py, float pz, float *x, float *y, float *z,
-        float *ex, float *ey, float *ez);
 void render_box_wireframe(Attrib *attrib, DebugBox *box, Player *p);
-void debug_set_info_box(
-        int n, float x, float y, float z, float ex, float ey, float ez);
-void debug_set_info_box_active(int n, int active);
 float box_sweep_world(
         float x, float y, float z, float ex, float ey, float ez,
         float vx, float vy, float vz, float *nx, float *ny, float *nz);

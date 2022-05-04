@@ -21,6 +21,7 @@
 #include "world.h"
 #include "game.h"
 #include "hitbox.h"
+#include "player.h"
 
 // The main game state is kept here
 static Model model;
@@ -239,26 +240,6 @@ GLuint gen_plant_buffer(float x, float y, float z, float n, int w) {
     float light = 1;
     make_plant(data, ao, light, x, y, z, n, w, 45);
     return gen_faces(10, 4, data);
-}
-
-// Create buffer for player model
-// Arguments:
-// - x: player x position
-// - y: player y position
-// - z: player z position
-// - rx: player rotation x
-// - ry: player rotation y
-// Returns:
-// - OpenGL buffer handle
-GLuint gen_player_buffer(
-        float x, float y, float z, float rx, float ry, float brx) 
-{
-    // Player model is just a cube
-    // Each face has 10 component float properties.
-    // A cube/box model has 6 faces
-    GLfloat *data = malloc_faces(10, 2*2*6);
-    make_player(data, x, y, z, rx, ry, brx);
-    return gen_faces(10, 2*6, data);
 }
 
 // Create a 2D screen model for a text string
@@ -487,61 +468,6 @@ Player *find_player(int id) {
         }
     }
     return 0;
-}
-
-// Update a player with a new position and rotation.
-// Arguments:
-// - player: player to modify
-// - x: new position x
-// - y: new position y
-// - z: new position z
-// - rx: new rotation x
-// - ry: new rotation y
-// - interpolate: whether to interpolate position
-void update_player(Player *player,
-    float x, float y, float z, float rx, float ry, int interpolate)
-{
-    if (interpolate) {
-        State *s1 = &player->state1;
-        State *s2 = &player->state2;
-        memcpy(s1, s2, sizeof(State));
-        s2->x = x; s2->y = y; s2->z = z; s2->rx = rx; s2->ry = ry;
-        s2->t = glfwGetTime();
-        if (s2->rx - s1->rx > PI) {
-            s1->rx += 2 * PI;
-        }
-        if (s1->rx - s2->rx > PI) {
-            s1->rx -= 2 * PI;
-        }
-    }
-    else {
-        State *s = &player->state;
-        s->x = x; s->y = y; s->z = z; s->rx = rx; s->ry = ry;
-        del_buffer(player->buffer);
-        player->buffer = gen_player_buffer(
-                s->x, s->y, s->z, s->rx, s->ry, s->brx);
-    }
-}
-
-// Arguments:
-// - player
-// Returns: none
-void interpolate_player(Player *player) {
-    State *s1 = &player->state1;
-    State *s2 = &player->state2;
-    float t1 = s2->t - s1->t;
-    float t2 = glfwGetTime() - s2->t;
-    t1 = MIN(t1, 1);
-    t1 = MAX(t1, 0.1);
-    float p = MIN(t2 / t1, 1);
-    update_player(
-        player,
-        s1->x + (s2->x - s1->x) * p,
-        s1->y + (s2->y - s1->y) * p,
-        s1->z + (s2->z - s1->z) * p,
-        s1->rx + (s2->rx - s1->rx) * p,
-        s1->ry + (s2->ry - s1->ry) * p,
-        0);
 }
 
 // Look for a player with the given id and remove that player's data
@@ -2097,39 +2023,6 @@ void render_wireframe(Attrib *attrib, Player *player) {
     }
 }
 
-// Get a player's hitbox (center and extents)
-// Arguments:
-// - px, py, pz: the player's position
-// - x, y, z: pointers to output hitbox center to
-// - ex, ey, ez: pointer to output hitbox extents to
-// Returns:
-// - modifies values pointed to by x, y, z, ex, ey, and ez
-void player_hitbox(
-        float px, float py, float pz, float *x, float *y, float *z,
-        float *ex, float *ey, float *ez)
-{
-    *x = px;
-    *y = py - PLAYER_HEADY - (PLAYER_HEIGHT / 2.0);
-    *z = pz;
-    *ex = PLAYER_WIDTH;
-    *ey = PLAYER_HEIGHT;
-    *ez = PLAYER_WIDTH;
-}
-
-// Player position inverse. Set player position from hitbox center point
-// (inverse of player_hitbox()).
-// Arguments:
-// - x, y, z: hitbox position to convert into player position
-// - px, py, pz: pointer to player position to modify
-// Returns:
-// - modifies values pointed to by px, py, and pz
-void player_pos_inv(float x, float y, float z, float *px, float *py, float *pz)
-{
-    *px = x;
-    *py = y + PLAYER_HEADY + (PLAYER_HEIGHT / 2.0);
-    *pz = z;
-}
-
 void render_box_wireframe(Attrib *attrib, DebugBox *box, Player *p)
 {
     if (!box->active)
@@ -2536,19 +2429,7 @@ void parse_command(const char *buffer, int forward) {
     int server_port = DEFAULT_PORT;
     char filename[MAX_PATH_LENGTH];
     int radius, count, xc, yc, zc;
-    if (strcmp(buffer, "/info1") == 0)
-    {
-        debug_set_info_box_active(1, !g->info1.active);
-    }
-    else if (strcmp(buffer, "/info2") == 0)
-    {
-        debug_set_info_box_active(2, !g->info2.active);
-    }
-    else if (strcmp(buffer, "/info3") == 0)
-    {
-        debug_set_info_box_active(3, !g->info3.active);
-    }
-    else if (strcmp(buffer, "/ghost") == 0)
+    if (strcmp(buffer, "/ghost") == 0)
     {
         // spawn ghost
         Player *me = &g->players[0];
@@ -3369,63 +3250,6 @@ void delete_ghost(Player *p) {
     }
 }
 
-// DEBUG
-// SET CURRENTLY DRAWN HIT BOX THINGY
-// Arguments:
-// - n: box number
-// - x, y, z: box center
-// - ex, ey, ez: box extents
-void debug_set_info_box(
-        int n, float x, float y, float z, float ex, float ey, float ez)
-{
-    DebugBox *box;
-    switch(n)
-    {
-        case 1:
-            box = &g->info1;
-            break;
-        case 2:
-            box = &g->info2;
-            break;
-        case 3:
-            box = &g->info3;
-            break;
-        default:
-            return;
-    }
-    if (box->active)
-    {
-        del_buffer(box->buffer);
-        box->x = x;
-        box->y = y;
-        box->z = z;
-        box->ex = ex;
-        box->ey = ey;
-        box->ez = ez;
-        box->buffer = gen_box_wireframe_buffer(x, y, z, ex, ey, ez);
-    }
-}
-
-// DEBUG
-void debug_set_info_box_active(int n, int active) {
-    DebugBox *box;
-    switch(n)
-    {
-        case 1:
-            box = &g->info1;
-            break;
-        case 2:
-            box = &g->info2;
-            break;
-        case 3:
-            box = &g->info3;
-            break;
-        default:
-            return;
-    }
-    box->active = active != 0;
-}
-
 // Get whether a certain block face is covered or exposed.
 // A face is exposed unless an obstacle block is in front of it.
 // Arguments:
@@ -3513,9 +3337,6 @@ float box_sweep_world(
             x, y, z, ex, ey, ez, vx, vy, vz, &bbx, &bby, &bbz,
             &bbex, &bbey, &bbez);
 
-    // DEBUG
-    //debug_set_info_box(3, bbx, bby, bbz, bbex, bbey, bbez);
-
     // Current block that the bounding box is inside of
     int cx, cy, cz;
     cx = roundf(x);
@@ -3569,9 +3390,6 @@ float box_sweep_world(
                     *nx = snx;
                     *ny = sny;
                     *nz = snz;
-
-                    // DEBUG
-                    //debug_set_info_box(2, bx, by, bz, 0.5, 0.5, 0.5);
                 }
             }
         }
