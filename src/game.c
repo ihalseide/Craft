@@ -2573,21 +2573,49 @@ void on_light() {
     }
 }
 
+// Try to place a block where the player is looking and return success
+int place_block(void)
+{
+    State *s = &g->players->state;
+    int hx, hy, hz;
+    int hw = hit_test(1, s->x, s->y, s->z, s->rx, s->ry, &hx, &hy, &hz);
+    if (hy > 0 && hy < 256 && is_obstacle(hw)) {
+        if (!player_intersects_block(s->x, s->y, s->z, s->vx, s->vy, s->vz, hx, hy, hz)) {
+            set_block(hx, hy, hz, items[g->item_index]);
+            record_block(hx, hy, hz, items[g->item_index]);
+            return 1;
+        }
+    }
+    return 0;
+}
+
+// Try to break a block where the player is looking and return success
+int break_block(void)
+{
+    State *s = &g->players->state;
+    int hx, hy, hz;
+    int hw = hit_test(0, s->x, s->y, s->z, s->rx, s->ry, &hx, &hy, &hz);
+    if (hy > 0 && hy < 256 && is_destructable(hw)) {
+        set_block(hx, hy, hz, 0);
+        record_block(hx, hy, hz, 0);
+        if (is_plant(get_block(hx, hy + 1, hz))) {
+            set_block(hx, hy + 1, hz, 0);
+        }
+        return 1;
+    }
+    return 0;
+}
+
 // Destroy block on left click, has a cool-down
 void on_left_click() {
     State *s = &g->players->state;
     float t = glfwGetTime();
     if (t - s->dblockt > g->physics.dblockcool)
     {
-        int hx, hy, hz;
-        int hw = hit_test(0, s->x, s->y, s->z, s->rx, s->ry, &hx, &hy, &hz);
-        if (hy > 0 && hy < 256 && is_destructable(hw)) {
+        if (break_block())
+        {
             s->dblockt = t;
-            set_block(hx, hy, hz, 0);
-            record_block(hx, hy, hz, 0);
-            if (is_plant(get_block(hx, hy + 1, hz))) {
-                set_block(hx, hy + 1, hz, 0);
-            }
+            s->autot = t;
         }
     }
 }
@@ -2598,14 +2626,10 @@ void on_right_click() {
     float t = glfwGetTime();
     if (t - s->blockt > g->physics.blockcool)
     {
-        int hx, hy, hz;
-        int hw = hit_test(1, s->x, s->y, s->z, s->rx, s->ry, &hx, &hy, &hz);
-        if (hy > 0 && hy < 256 && is_obstacle(hw)) {
-            if (!player_intersects_block(s->x, s->y, s->z, s->vx, s->vy, s->vz, hx, hy, hz)) {
-                set_block(hx, hy, hz, items[g->item_index]);
-                record_block(hx, hy, hz, items[g->item_index]);
-                s->blockt = t;
-            }
+        if (place_block())
+        {
+            s->blockt = t;
+            s->autot = t;
         }
     }
 }
@@ -2891,6 +2915,22 @@ void handle_mouse_input() {
         }
         if (s->brx >= RADIANS(360)){
             s->brx -= RADIANS(360);
+        }
+        // Auto-break or auto-place when holding down mouse button
+        float t = glfwGetTime();
+        if (t - s->autot > g->physics.ablockcool && glfwGetMouseButton(g->window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS)
+        {
+            if (place_block())
+            {
+                s->autot = t;
+            }
+        }
+        if (t - s->autot > g->physics.adblockcool && glfwGetMouseButton(g->window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
+        {
+            if (break_block())
+            {
+                s->autot = t;
+            }
         }
         // Clamp ry
         s->ry = MAX(s->ry, -RADIANS(90));
@@ -3232,9 +3272,9 @@ void reset_model() {
     g->physics.jumpaccel = 900.0;
     g->physics.jumpcool = 0.31;
     g->physics.blockcool = 0.1;
-    g->physics.ablockcool = 0.1;
+    g->physics.ablockcool = 0.2;
     g->physics.dblockcool = 0.1;
-    g->physics.adblockcool = 0.1;
+    g->physics.adblockcool = 0.2;
 }
 
 // DEBUG

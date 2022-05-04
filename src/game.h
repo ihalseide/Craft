@@ -380,6 +380,8 @@ void parse_buffer(char *buffer);
 void reset_model();
 
 // NEW FUNCTIONS
+int place_block(void);
+int break_block(void);
 void create_ghost(Player *p);
 void delete_ghost(Player *p);
 int ghost_id(int pid);
