@@ -34,6 +34,12 @@
 // - airhr: air resistance horizontal factor when walking through air
 // - airvr: air resistance vertical factor when jumping/falling
 // - jumpcool: cool-down time between jumps
+// - blockcool: cool-down time between placing blocks by any means
+// - dblockcool: cool-down time between destroying blocks by any means
+// - ablockcool: cool-down time between placing blocks automatically by holding
+//   down the button
+// - adblockcool: cool-down time between destroying blocks automatically by
+//   holding down the button
 typedef struct {
     float grav;
     float walksp;
@@ -44,6 +50,10 @@ typedef struct {
     float airhr;
     float airvr;
     float jumpcool;
+    float blockcool;
+    float ablockcool;
+    float dblockcool;
+    float adblockcool;
 } PhysicsConfig;
 
 // World chunk data (big area of blocks)

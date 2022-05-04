@@ -22,6 +22,7 @@
 // - flying: flag for if flying
 // - brx: body rotation x
 // - jumpt: last jump time (for limiting jump rate)
+// - blockt: last block placement time (for limiting rate)
 typedef struct {
     float x; 
     float y;
@@ -37,6 +38,8 @@ typedef struct {
     int flying;
     float brx;
     float jumpt;
+    float blockt;
+    float dblockt;
 } State;
 
 // Player

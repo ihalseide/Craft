@@ -2573,31 +2573,39 @@ void on_light() {
     }
 }
 
-// Arguments: none
-// Returns: none
+// Destroy block on left click, has a cool-down
 void on_left_click() {
     State *s = &g->players->state;
-    int hx, hy, hz;
-    int hw = hit_test(0, s->x, s->y, s->z, s->rx, s->ry, &hx, &hy, &hz);
-    if (hy > 0 && hy < 256 && is_destructable(hw)) {
-        set_block(hx, hy, hz, 0);
-        record_block(hx, hy, hz, 0);
-        if (is_plant(get_block(hx, hy + 1, hz))) {
-            set_block(hx, hy + 1, hz, 0);
+    float t = glfwGetTime();
+    if (t - s->dblockt > g->physics.dblockcool)
+    {
+        int hx, hy, hz;
+        int hw = hit_test(0, s->x, s->y, s->z, s->rx, s->ry, &hx, &hy, &hz);
+        if (hy > 0 && hy < 256 && is_destructable(hw)) {
+            s->dblockt = t;
+            set_block(hx, hy, hz, 0);
+            record_block(hx, hy, hz, 0);
+            if (is_plant(get_block(hx, hy + 1, hz))) {
+                set_block(hx, hy + 1, hz, 0);
+            }
         }
     }
 }
 
-// Arguments: none
-// Returns: none
+// Place block on left click, has a cool-down
 void on_right_click() {
     State *s = &g->players->state;
-    int hx, hy, hz;
-    int hw = hit_test(1, s->x, s->y, s->z, s->rx, s->ry, &hx, &hy, &hz);
-    if (hy > 0 && hy < 256 && is_obstacle(hw)) {
-        if (!player_intersects_block(s->x, s->y, s->z, s->vx, s->vy, s->vz, hx, hy, hz)) {
-            set_block(hx, hy, hz, items[g->item_index]);
-            record_block(hx, hy, hz, items[g->item_index]);
+    float t = glfwGetTime();
+    if (t - s->blockt > g->physics.blockcool)
+    {
+        int hx, hy, hz;
+        int hw = hit_test(1, s->x, s->y, s->z, s->rx, s->ry, &hx, &hy, &hz);
+        if (hy > 0 && hy < 256 && is_obstacle(hw)) {
+            if (!player_intersects_block(s->x, s->y, s->z, s->vx, s->vy, s->vz, hx, hy, hz)) {
+                set_block(hx, hy, hz, items[g->item_index]);
+                record_block(hx, hy, hz, items[g->item_index]);
+                s->blockt = t;
+            }
         }
     }
 }
@@ -2847,8 +2855,7 @@ void create_window() {
         window_width, window_height, "Craft", monitor, NULL);
 }
 
-// Arguments: none
-// Returns: none
+// Move camera with mouse movement
 void handle_mouse_input() {
     int exclusive =
         glfwGetInputMode(g->window, GLFW_CURSOR) == GLFW_CURSOR_DISABLED;
@@ -3215,15 +3222,19 @@ void reset_model() {
     g->time_changed = 1;
     // Default physics
     memset(&g->physics, 0, sizeof(g->physics));
-    g->physics.flyr      = 3.0;
-    g->physics.airhr     = 3.4;
-    g->physics.airvr     = 0.1;
-    g->physics.groundr   = 4.1;
-    g->physics.flysp     = 100.0;
-    g->physics.walksp    = 50.0;
-    g->physics.grav      = 60.0;
+    g->physics.flyr = 3.0;
+    g->physics.airhr = 3.4;
+    g->physics.airvr = 0.1;
+    g->physics.groundr = 4.1;
+    g->physics.flysp = 100.0;
+    g->physics.walksp = 50.0;
+    g->physics.grav = 60.0;
     g->physics.jumpaccel = 900.0;
-    g->physics.jumpcool  = 0.31;
+    g->physics.jumpcool = 0.31;
+    g->physics.blockcool = 0.1;
+    g->physics.ablockcool = 0.1;
+    g->physics.dblockcool = 0.1;
+    g->physics.adblockcool = 0.1;
 }
 
 // DEBUG
