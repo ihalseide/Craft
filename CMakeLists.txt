@@ -4,15 +4,6 @@ project(craft)
 
 FILE(GLOB SOURCE_FILES src/*.c)
 
-add_executable(
-    craft
-    ${SOURCE_FILES}
-    deps/glew/src/glew.c
-    deps/lodepng/lodepng.c
-    deps/noise/noise.c
-    deps/sqlite/sqlite3.c
-    deps/tinycthread/tinycthread.c)
-
 add_definitions(-std=c99 -O3)
 
 add_subdirectory(deps/glfw)
@@ -22,6 +13,16 @@ include_directories(deps/lodepng)
 include_directories(deps/noise)
 include_directories(deps/sqlite)
 include_directories(deps/tinycthread)
+
+add_compile_options(-Wall -Wextra -Wfatal-errors)
+add_executable(
+    craft
+    ${SOURCE_FILES}
+    deps/glew/src/glew.c
+    deps/lodepng/lodepng.c
+    deps/noise/noise.c
+    deps/sqlite/sqlite3.c
+    deps/tinycthread/tinycthread.c)
 
 if(MINGW)
     set(CMAKE_LIBRARY_PATH ${CMAKE_LIBRARY_PATH}
