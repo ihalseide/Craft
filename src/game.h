@@ -1,10 +1,20 @@
 #ifndef _game_h_
 #define _game_h_
 
-#include "player.h"
-#include "config.h"
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
+#include <tinycthread.h>
+
+#include "player.h"
+#include "config.h"
+#include "map.h"
+#include "player.h"
+#include "sign.h"
+#include "hitbox.h"
+#include "cube.h"
+#include "util.h"
+#include "item.h"
+#include "world.h"
 
 #define MAX_CHUNKS 8192
 #define MAX_PLAYERS 128

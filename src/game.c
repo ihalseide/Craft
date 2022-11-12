@@ -6,6 +6,7 @@
 #include <string.h>
 #include <limits.h>
 #include <assert.h>
+
 #include "auth.h"
 #include "client.h"
 #include "config.h"
