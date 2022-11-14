@@ -68,5 +68,7 @@ int is_plant(int w);
 int is_obstacle(int w);
 int is_transparent(int w);
 int is_destructable(int w);
+int block_get_max_damage(int w);
+int block_get_min_damage_threshold(int w);
 
 #endif

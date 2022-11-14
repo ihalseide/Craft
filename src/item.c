@@ -149,16 +149,16 @@ const int plants[256] = {
 // - boolean whether block type is a plant
 int is_plant(int w) {
     switch (w) {
-        case TALL_GRASS:
-        case YELLOW_FLOWER:
-        case RED_FLOWER:
-        case PURPLE_FLOWER:
-        case SUN_FLOWER:
-        case WHITE_FLOWER:
-        case BLUE_FLOWER:
-            return 1;
-        default:
-            return 0;
+    case TALL_GRASS:
+    case YELLOW_FLOWER:
+    case RED_FLOWER:
+    case PURPLE_FLOWER:
+    case SUN_FLOWER:
+    case WHITE_FLOWER:
+    case BLUE_FLOWER:
+        return 1;
+    default:
+        return 0;
     }
 }
 
@@ -169,15 +169,13 @@ int is_plant(int w) {
 // - boolean whether block type is obstacle
 int is_obstacle(int w) {
     w = ABS(w);
-    if (is_plant(w)) {
-        return 0;
-    }
+    if (is_plant(w)) { return 0; }
     switch (w) {
-        case EMPTY:
-        case CLOUD:
-            return 0;
-        default:
-            return 1;
+    case EMPTY:
+    case CLOUD:
+        return 0;
+    default:
+        return 1;
     }
 }
 
@@ -187,20 +185,16 @@ int is_obstacle(int w) {
 // Returns:
 // - boolean whether block type is transparent
 int is_transparent(int w) {
-    if (w == EMPTY) {
-        return 1;
-    }
+    if (w == EMPTY) { return 1; }
     w = ABS(w);
-    if (is_plant(w)) {
-        return 1;
-    }
+    if (is_plant(w)) { return 1; }
     switch (w) {
-        case EMPTY:
-        case GLASS:
-        case LEAVES:
-            return 1;
-        default:
-            return 0;
+    case EMPTY:
+    case GLASS:
+    case LEAVES:
+        return 1;
+    default:
+        return 0;
     }
 }
 
@@ -211,11 +205,51 @@ int is_transparent(int w) {
 // - boolean whether block type is destructable
 int is_destructable(int w) {
     switch (w) {
-        case EMPTY:
-        case CLOUD:
-            return 0;
-        default:
-            return 1;
+    case EMPTY:
+    case CLOUD:
+        return 0;
+    default:
+        return 1;
+    }
+}
+
+
+// Return the minimum amount of damage that is required in order to
+// change the block's damage value.
+int block_get_min_damage_threshold(int w) {
+    switch (w) {
+    case STONE:
+    case BRICK:
+    case CEMENT:
+    case DARK_STONE:
+    case LIGHT_STONE:
+        return 3;
+    case COBBLE:
+        return 2;
+    default:
+        return 1;
+    }
+}
+
+
+// Return the damage value that destroys a block.
+int block_get_max_damage(int w) {
+    switch (w) {
+    case STONE:
+    case BRICK:
+    case CEMENT:
+    case DARK_STONE:
+    case LIGHT_STONE:
+    case COBBLE:
+        return 100;
+    case GRASS:
+        return 60;
+    case DIRT:
+    case SAND:
+        return 50;
+    default:
+        if (is_plant(w)) { return 1; }
+        return 2;
     }
 }
 

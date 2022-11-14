@@ -1259,6 +1259,7 @@ void generate_chunk(Chunk *chunk, WorkerItem *item) {
     gen_sign_buffer(chunk);
 }
 
+
 // Arguments:
 // - chunk
 // Returns: none
@@ -1288,6 +1289,7 @@ void gen_chunk_buffer(Chunk *chunk) {
     chunk->dirty = 0;
 }
 
+
 // Callback function used for world generation
 // Arguments:
 // - x: x position
@@ -1303,6 +1305,7 @@ void map_set_func(int x, int y, int z, int w, void *arg) {
     map_set(map, x, y, z, w);
 }
 
+
 // Arguments:
 // - item
 // Returns: none
@@ -1316,6 +1319,7 @@ void load_chunk(WorkerItem *item) {
     db_load_lights(light_map, p, q);
 }
 
+
 // Arguments:
 // - p
 // - q
@@ -1324,6 +1328,7 @@ void request_chunk(int p, int q) {
     int key = db_get_key(p, q);
     client_chunk(p, q, key);
 }
+
 
 // Arguments:
 // - chunk
@@ -1342,13 +1347,16 @@ void init_chunk(Chunk *chunk, int p, int q) {
     sign_list_alloc(signs, 16);
     db_load_signs(signs, p, q);
     Map *block_map = &chunk->map;
+    Map *dam_map = &chunk->damage;
     Map *light_map = &chunk->lights;
     int dx = p * CHUNK_SIZE - 1;
     int dy = 0;
     int dz = q * CHUNK_SIZE - 1;
     map_alloc(block_map, dx, dy, dz, 0x7fff);
+    map_alloc(dam_map, dx, dy, dz, 0x7fff);
     map_alloc(light_map, dx, dy, dz, 0xf);
 }
+
 
 // Arguments:
 // - chunk
@@ -1664,12 +1672,10 @@ void unset_sign_face(int x, int y, int z, int face) {
     }
 }
 
+
 // Arguments:
-// - p
-// - q
-// - x
-// - y
-// - z
+// - p, q
+// - x, y, z
 // - face
 // - text
 // - dirty
@@ -1692,10 +1698,9 @@ void _set_sign(
     db_insert_sign(p, q, x, y, z, face, text);
 }
 
+
 // Arguments:
-// - x
-// - y
-// - z
+// - x, y, z
 // - face
 // - text
 // Returns: none
@@ -1706,10 +1711,9 @@ void set_sign(int x, int y, int z, int face, const char *text) {
     client_sign(x, y, z, face, text);
 }
 
+
 // Arguments:
-// - x
-// - y
-// - z
+// - x, y, z
 // Returns: none
 void toggle_light(int x, int y, int z) {
     int p = chunked(x);
@@ -1725,12 +1729,10 @@ void toggle_light(int x, int y, int z) {
     }
 }
 
+
 // Arguments:
-// - p
-// - q
-// - x
-// - y
-// - z
+// - p, q
+// - x, y, z
 // - w
 // Returns: none
 void set_light(int p, int q, int x, int y, int z, int w) {
@@ -1747,12 +1749,10 @@ void set_light(int p, int q, int x, int y, int z, int w) {
     }
 }
 
+
 // Arguments:
-// - p
-// - q
-// - x
-// - y
-// - z
+// - p, q
+// - x, y, z
 // - w
 // - dirty
 // Returns: none
@@ -1770,6 +1770,10 @@ void _set_block(int p, int q, int x, int y, int z, int w, int dirty) {
     else {
         db_insert_block(p, q, x, y, z, w);
     }
+    // Reset damage for deleted blocks
+    if (w == 0) {
+        map_set(&chunk->damage, x, y, z, 0);
+    }
     // If a block is removed, then remove any signs and light source from that block.
     if (w == 0 && chunked(x) == p && chunked(z) == q) {
         unset_sign(x, y, z);
@@ -1777,10 +1781,9 @@ void _set_block(int p, int q, int x, int y, int z, int w, int dirty) {
     }
 }
 
+
 // Arguments:
-// - x
-// - y
-// - z
+// - x, y, z
 // - w
 // Returns: none
 void set_block(int x, int y, int z, int w) {
@@ -1789,25 +1792,19 @@ void set_block(int x, int y, int z, int w) {
     _set_block(p, q, x, y, z, w, 1);
     for (int dx = -1; dx <= 1; dx++) {
         for (int dz = -1; dz <= 1; dz++) {
-            if (dx == 0 && dz == 0) {
-                continue;
-            }
-            if (dx && chunked(x + dx) == p) {
-                continue;
-            }
-            if (dz && chunked(z + dz) == q) {
-                continue;
-            }
+            if (dx == 0 && dz == 0) { continue; }
+            if (dx && chunked(x + dx) == p) { continue; }
+            if (dz && chunked(z + dz) == q) { continue; }
             _set_block(p + dx, q + dz, x, y, z, -w, 1);
         }
     }
     client_block(x, y, z, w);
 }
 
+
+// Add the block to the (short) player's block history record
 // Arguments:
-// - x
-// - y
-// - z
+// - x, y, z
 // - w
 // Returns: none
 void record_block(int x, int y, int z, int w) {
@@ -1818,27 +1815,71 @@ void record_block(int x, int y, int z, int w) {
     g->block0.w = w;
 }
 
-// Arguments:
-// - x
-// - y
-// - z
-// Returns:
-// - w
-int get_block(int x, int y, int z) {
+
+Chunk *find_chunk_xyz(int x, int y, int z) {
     int p = chunked(x);
     int q = chunked(z);
-    Chunk *chunk = find_chunk(p, q);
-    if (chunk) {
-        Map *map = &chunk->map;
-        return map_get(map, x, y, z);
+    return find_chunk(p, q);
+}
+
+
+// Arguments:
+// - x, y, z
+// Returns:
+// - w (block type value)
+int get_block(int x, int y, int z) {
+    Chunk *chunk = find_chunk_xyz(x, y, z);
+    if (!chunk) { return 0; }
+    return map_get(&chunk->map, x, y, z);
+}
+
+
+int get_block_damage(int x, int y, int z) {
+    Chunk *chunk = find_chunk_xyz(x, y, z);
+    if (!chunk) { return 0; }
+    return map_get(&chunk->damage, x, y, z);
+}
+
+
+// Returns if something was found
+// w and damage are output
+int get_block_and_damage(int x, int y, int z, int *w, int *damage) {
+    Chunk *chunk = find_chunk_xyz(x, y, z);
+    if (!chunk) { return 0; }
+    if (w) { *w = map_get(&chunk->map, x, y, z); }
+    if (damage) { *damage = map_get(&chunk->damage, x, y, z); }
+    return 1;
+}
+
+
+void set_block_damage(int x, int y, int z, int damage) {
+    Chunk *chunk = find_chunk_xyz(x, y, z);
+    if (!chunk) { assert(0 && "no chunk!"); }
+    map_set(&chunk->damage, x, y, z, damage);
+}
+
+
+// Add damage to a block and destroy it if it exceeds the damage limit.
+// Returns non-zero if the block was destroyed
+int add_block_damage_and_destroy(int x, int y, int z, int damage) {
+    int w, initial_damage;
+    if (!get_block_and_damage(x, y, z, &w, &initial_damage)) { return 0; }
+    if (damage < block_get_min_damage_threshold(w)) { return 0; }
+    int new_damage = initial_damage + damage;
+    if (new_damage >= block_get_max_damage(w)) {
+        // It is enough to break the block
+        set_block(x, y, z, 0);
+        return 1;
+    } else {
+        // Add and save the block's damage
+        set_block_damage(x, y, z, new_damage);
     }
     return 0;
 }
 
+
 // Arguments:
-// - x
-// - y
-// - z
+// - x, y, z
 // - w
 // Returns: none
 void builder_block(int x, int y, int z, int w) {
@@ -1852,6 +1893,7 @@ void builder_block(int x, int y, int z, int w) {
         set_block(x, y, z, w);
     }
 }
+
 
 // Arguments:
 // - attrib
@@ -2593,11 +2635,14 @@ int place_block(void)
 // Try to break a block where the player is looking and return success
 int break_block(void)
 {
-    State *s = &g->players->state;
+    State *s = &(g->players[0].state);
     int hx, hy, hz;
     int hw = hit_test(0, s->x, s->y, s->z, s->rx, s->ry, &hx, &hy, &hz);
     if (hy > 0 && hy < 256 && is_destructable(hw)) {
-        set_block(hx, hy, hz, 0);
+        int player_attack_damage = g->players[0].attack_damage;
+        printf("did %d damage\n", player_attack_damage);
+        if (!add_block_damage_and_destroy(hx, hy, hz, player_attack_damage)) { return 0; }
+        //set_block(hx, hy, hz, 0);
         record_block(hx, hy, hz, 0);
         if (is_plant(get_block(hx, hy + 1, hz))) {
             set_block(hx, hy + 1, hz, 0);
@@ -2613,11 +2658,8 @@ void on_left_click() {
     float t = glfwGetTime();
     if (t - s->dblockt > g->physics.dblockcool)
     {
-        if (break_block())
-        {
-            s->dblockt = t;
-            s->autot = t;
-        }
+        s->dblockt = t;
+        break_block();
     }
 }
 
@@ -2630,7 +2672,7 @@ void on_right_click() {
         if (place_block())
         {
             s->blockt = t;
-            s->autot = t;
+            //s->autot = t;
         }
     }
 }
@@ -2916,22 +2958,6 @@ void handle_mouse_input() {
         }
         if (s->brx >= RADIANS(360)){
             s->brx -= RADIANS(360);
-        }
-        // Auto-break or auto-place when holding down mouse button
-        float t = glfwGetTime();
-        if (t - s->autot > g->physics.ablockcool && glfwGetMouseButton(g->window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS)
-        {
-            if (place_block())
-            {
-                s->autot = t;
-            }
-        }
-        if (t - s->autot > g->physics.adblockcool && glfwGetMouseButton(g->window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
-        {
-            if (break_block())
-            {
-                s->autot = t;
-            }
         }
         // Clamp ry
         s->ry = MAX(s->ry, -RADIANS(90));
@@ -3261,6 +3287,7 @@ void reset_model() {
     g->day_length = DAY_LENGTH;
     glfwSetTime(g->day_length / 3.0);
     g->time_changed = 1;
+
     // Default physics
     memset(&g->physics, 0, sizeof(g->physics));
     g->physics.flyr = 3.0;
@@ -3272,10 +3299,8 @@ void reset_model() {
     g->physics.grav = 60.0;
     g->physics.jumpaccel = 900.0;
     g->physics.jumpcool = 0.31;
-    g->physics.blockcool = 0.1;
-    g->physics.ablockcool = 0.2;
-    g->physics.dblockcool = 0.1;
-    g->physics.adblockcool = 0.2;
+    g->physics.blockcool = 0.1;   // max 10 times per second
+    g->physics.dblockcool = 0.05; // max 20 times per second
 }
 
 // DEBUG

@@ -30,9 +30,7 @@ int main(int argc, char **argv) {
     rand();
 
     // WINDOW INITIALIZATION //
-    if (!glfwInit()) {
-        return -1;
-    }
+    if (!glfwInit()) { return -1; }
     create_window();
     if (!g->window) {
         glfwTerminate();
@@ -48,9 +46,7 @@ int main(int argc, char **argv) {
     glfwSetMouseButtonCallback(g->window, on_mouse_button);
     glfwSetScrollCallback(g->window, on_scroll);
 
-    if (glewInit() != GLEW_OK) {
-        return -1;
-    }
+    if (glewInit() != GLEW_OK) { return -1; }
 
     // Initialize some OpenGL settings
     glEnable(GL_CULL_FACE);
@@ -210,6 +206,7 @@ int main(int argc, char **argv) {
         me->id = 0;
         me->name[0] = '\0';
         me->buffer = 0;
+        me->attack_damage = 1;
         g->player_count = 1;
 
         // LOAD STATE FROM DATABASE //
@@ -341,6 +338,7 @@ int main(int argc, char **argv) {
                 render_text(&text_attrib, ALIGN_LEFT, tx, ty, ts, text_buffer);
                 ty -= ts * 2;
             }
+
             if (SHOW_PLAYER_NAMES) {
                 if (player != me) {
                     render_text(&text_attrib, ALIGN_CENTER,
@@ -354,38 +352,17 @@ int main(int argc, char **argv) {
                 }
             }
 
-            // RENDER PICTURE IN PICTURE //
-            if (g->observe2) {
-                player = g->players + g->observe2;
-
-                int pw = 256 * g->scale;
-                int ph = 256 * g->scale;
-                int offset = 32 * g->scale;
-                int pad = 3 * g->scale;
-                int sw = pw + pad * 2;
-                int sh = ph + pad * 2;
-
-                glEnable(GL_SCISSOR_TEST);
-                glScissor(g->width - sw - offset + pad, offset - pad, sw, sh);
-                glClear(GL_COLOR_BUFFER_BIT);
-                glDisable(GL_SCISSOR_TEST);
-                glClear(GL_DEPTH_BUFFER_BIT);
-                glViewport(g->width - pw - offset, offset, pw, ph);
-
-                g->width = pw;
-                g->height = ph;
-                g->ortho = 0;
-                g->fov = 65;
-
-                render_sky(&sky_attrib, player, sky_buffer);
-                glClear(GL_DEPTH_BUFFER_BIT);
-                render_chunks(&block_attrib, player);
-                render_signs(&text_attrib, player);
-                render_players(&block_attrib, player);
-                glClear(GL_DEPTH_BUFFER_BIT);
-                if (SHOW_PLAYER_NAMES) {
-                    render_text(&text_attrib, ALIGN_CENTER,
-                        pw / 2, ts, ts, player->name);
+            // show damage info for current block
+            {
+                State *s = &me->state;
+                int hx, hy, hz;
+                int hw = hit_test(0, s->x, s->y, s->z, s->rx, s->ry, &hx, &hy, &hz);
+                if (hw) {
+                    int damage = get_block_damage(hx, hy, hz);
+                    if (damage) {
+                        snprintf(text_buffer, 1024, "block: %d, damage: %d", hw, damage);
+                        render_text(&text_attrib, ALIGN_LEFT, tx, ty, ts, text_buffer);
+                    }
                 }
             }
 

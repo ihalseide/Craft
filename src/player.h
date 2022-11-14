@@ -59,6 +59,7 @@ typedef struct {
     State state1;
     State state2;
     GLuint buffer;
+    int attack_damage;
 } Player;
 
 void update_player(

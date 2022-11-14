@@ -46,10 +46,7 @@
 // - jumpcool: cool-down time between jumps
 // - blockcool: cool-down time between placing blocks by any means
 // - dblockcool: cool-down time between destroying blocks by any means
-// - ablockcool: cool-down time between placing blocks automatically by holding
 //   down the button
-// - adblockcool: cool-down time between destroying blocks automatically by
-//   holding down the button
 typedef struct {
     float grav;
     float walksp;
@@ -61,9 +58,7 @@ typedef struct {
     float airvr;
     float jumpcool;
     float blockcool;
-    float ablockcool;
     float dblockcool;
-    float adblockcool;
 } PhysicsConfig;
 
 // World chunk data (big area of blocks)
@@ -80,8 +75,9 @@ typedef struct {
 // - buffer:
 // - sign_buffer:
 typedef struct {
-    Map map;
-    Map lights;
+    Map map;    // block types
+    Map lights; // block lights
+    Map damage; // block damage
     SignList signs;
     int p;
     int q;
@@ -405,6 +401,8 @@ int box_intersect_world(
         float x, float y, float z, float ex, float ey, float ez,
         int *cx, int *cy, int *cz);
 int is_block_face_covered(int x, int y, int z, float nx, float ny, float nz);
+int get_block_and_damage(int x, int y, int z, int *w, int *damage);
+int get_block_damage(int x, int y, int z);
 
 #endif /*_game_h_*/
 
