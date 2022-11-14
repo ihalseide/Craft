@@ -12,6 +12,7 @@
 #include "db.h"
 #include "game.h"
 #include "util.h"
+#include "player.h"
 
 extern Model *g;
 
@@ -22,6 +23,7 @@ extern Model *g;
 // Returns:
 // - zero upon success, non-zero upon failure
 int main(int argc, char **argv) {
+
     // INITIALIZATION //
     curl_global_init(CURL_GLOBAL_DEFAULT);
     srand(time(NULL));
@@ -100,43 +102,43 @@ int main(int argc, char **argv) {
 
     program = load_program(
         "shaders/block_vertex.glsl", "shaders/block_fragment.glsl");
-    block_attrib.program = program;
+    block_attrib.program  = program;
     block_attrib.position = glGetAttribLocation(program, "position");
-    block_attrib.normal = glGetAttribLocation(program, "normal");
-    block_attrib.uv = glGetAttribLocation(program, "uv");
-    block_attrib.matrix = glGetUniformLocation(program, "matrix");
-    block_attrib.sampler = glGetUniformLocation(program, "sampler");
-    block_attrib.extra1 = glGetUniformLocation(program, "sky_sampler");
-    block_attrib.extra2 = glGetUniformLocation(program, "daylight");
-    block_attrib.extra3 = glGetUniformLocation(program, "fog_distance");
-    block_attrib.extra4 = glGetUniformLocation(program, "ortho");
-    block_attrib.camera = glGetUniformLocation(program, "camera");
-    block_attrib.timer = glGetUniformLocation(program, "timer");
+    block_attrib.normal   = glGetAttribLocation(program, "normal");
+    block_attrib.uv       = glGetAttribLocation(program, "uv");
+    block_attrib.matrix   = glGetUniformLocation(program, "matrix");
+    block_attrib.sampler  = glGetUniformLocation(program, "sampler");
+    block_attrib.extra1   = glGetUniformLocation(program, "sky_sampler");
+    block_attrib.extra2   = glGetUniformLocation(program, "daylight");
+    block_attrib.extra3   = glGetUniformLocation(program, "fog_distance");
+    block_attrib.extra4   = glGetUniformLocation(program, "ortho");
+    block_attrib.camera   = glGetUniformLocation(program, "camera");
+    block_attrib.timer    = glGetUniformLocation(program, "timer");
 
     program = load_program(
         "shaders/line_vertex.glsl", "shaders/line_fragment.glsl");
-    line_attrib.program = program;
+    line_attrib.program  = program;
     line_attrib.position = glGetAttribLocation(program, "position");
-    line_attrib.matrix = glGetUniformLocation(program, "matrix");
+    line_attrib.matrix   = glGetUniformLocation(program, "matrix");
 
     program = load_program(
         "shaders/text_vertex.glsl", "shaders/text_fragment.glsl");
-    text_attrib.program = program;
+    text_attrib.program  = program;
     text_attrib.position = glGetAttribLocation(program, "position");
-    text_attrib.uv = glGetAttribLocation(program, "uv");
-    text_attrib.matrix = glGetUniformLocation(program, "matrix");
-    text_attrib.sampler = glGetUniformLocation(program, "sampler");
-    text_attrib.extra1 = glGetUniformLocation(program, "is_sign");
+    text_attrib.uv       = glGetAttribLocation(program, "uv");
+    text_attrib.matrix   = glGetUniformLocation(program, "matrix");
+    text_attrib.sampler  = glGetUniformLocation(program, "sampler");
+    text_attrib.extra1   = glGetUniformLocation(program, "is_sign");
 
     program = load_program(
         "shaders/sky_vertex.glsl", "shaders/sky_fragment.glsl");
-    sky_attrib.program = program;
+    sky_attrib.program  = program;
     sky_attrib.position = glGetAttribLocation(program, "position");
-    sky_attrib.normal = glGetAttribLocation(program, "normal");
-    sky_attrib.uv = glGetAttribLocation(program, "uv");
-    sky_attrib.matrix = glGetUniformLocation(program, "matrix");
-    sky_attrib.sampler = glGetUniformLocation(program, "sampler");
-    sky_attrib.timer = glGetUniformLocation(program, "timer");
+    sky_attrib.normal   = glGetAttribLocation(program, "normal");
+    sky_attrib.uv       = glGetAttribLocation(program, "uv");
+    sky_attrib.matrix   = glGetUniformLocation(program, "matrix");
+    sky_attrib.sampler  = glGetUniformLocation(program, "sampler");
+    sky_attrib.timer    = glGetUniformLocation(program, "timer");
 
     // CHECK COMMAND LINE ARGUMENTS //
     if (argc == 2 || argc == 3) {
@@ -211,7 +213,9 @@ int main(int argc, char **argv) {
         g->player_count = 1;
 
         // LOAD STATE FROM DATABASE //
-        int loaded = db_load_state(&s->x, &s->y, &s->z, &s->rx, &s->ry, &s->flying);
+        int loaded = db_load_state(
+                &s->x, &s->y, &s->z, &s->rx, &s->ry, &s->flying);
+        s->brx = s->rx;
         force_chunks(me);
         if (!loaded) {
             s->y = highest_block(s->x, s->z) + 2;
@@ -269,7 +273,8 @@ int main(int argc, char **argv) {
             g->observe2 = g->observe2 % g->player_count;
             delete_chunks();
             del_buffer(me->buffer);
-            me->buffer = gen_player_buffer(s->x, s->y, s->z, s->rx, s->ry);
+            me->buffer = gen_player_buffer(
+                    s->x, s->y, s->z, s->rx, s->ry, s->brx);
             for (int i = 1; i < g->player_count; i++) {
                 interpolate_player(g->players + i);
             }
@@ -287,6 +292,7 @@ int main(int argc, char **argv) {
             render_players(&block_attrib, player);
             if (SHOW_WIREFRAME) {
                 render_wireframe(&line_attrib, player);
+                render_players_hitboxes(&line_attrib, player);
             }
 
             // RENDER HUD //

@@ -4,6 +4,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <limits.h>
+#include <assert.h>
+
 #include "auth.h"
 #include "client.h"
 #include "config.h"
@@ -18,6 +21,8 @@
 #include "util.h"
 #include "world.h"
 #include "game.h"
+#include "hitbox.h"
+#include "player.h"
 
 // The main game state is kept here
 static Model model;
@@ -159,8 +164,27 @@ GLuint gen_crosshair_buffer() {
 // Returns:
 // - OpenGL buffer handle
 GLuint gen_wireframe_buffer(float x, float y, float z, float n) {
+    // (6 faces)*(4 points)*(3 dimensions) = 72 floats
     float data[72];
     make_cube_wireframe(data, x, y, z, n);
+    return gen_buffer(sizeof(data), data);
+}
+
+// Arguments:
+// - x: box center x position
+// - y: box center y position
+// - z: box center z position
+// - ex: box x extent
+// - ey: box y extent
+// - ez: box z extent
+// Returns:
+// - OpenGL buffer handle
+GLuint gen_box_wireframe_buffer(
+        float x, float y, float z, float ex, float ey, float ez)
+{
+    // (6 faces)*(4 points)*(3 dimensions) = 72 floats
+    float data[72];
+    make_box_wireframe(data, x, y, z, ex, ey, ez);
     return gen_buffer(sizeof(data), data);
 }
 
@@ -219,24 +243,6 @@ GLuint gen_plant_buffer(float x, float y, float z, float n, int w) {
     return gen_faces(10, 4, data);
 }
 
-// Create buffer for player model
-// Arguments:
-// - x: player x position
-// - y: player y position
-// - z: player z position
-// - rx: player rotation x
-// - ry: player rotation y
-// Returns:
-// - OpenGL buffer handle
-GLuint gen_player_buffer(float x, float y, float z, float rx, float ry) {
-    // Player model is just a cube
-    // Each face has 10 component float properties.
-    // A cube model has 6 faces
-    GLfloat *data = malloc_faces(10, 6);
-    make_player(data, x, y, z, rx, ry);
-    return gen_faces(10, 6, data);
-}
-
 // Create a 2D screen model for a text string
 // Arguments:
 // - x: screen x
@@ -274,6 +280,25 @@ void draw_triangles_3d_ao(Attrib *attrib, GLuint buffer, int count) {
     glVertexAttribPointer(attrib->uv, 4, GL_FLOAT, GL_FALSE,
         sizeof(GLfloat) * 10, (GLvoid *)(sizeof(GLfloat) * 6));
     glDrawArrays(GL_TRIANGLES, 0, count);
+    glDisableVertexAttribArray(attrib->position);
+    glDisableVertexAttribArray(attrib->normal);
+    glDisableVertexAttribArray(attrib->uv);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+}
+
+void draw_cube_offset(Attrib *attrib, GLuint buffer, int offset) {
+    int count = 36;
+    glBindBuffer(GL_ARRAY_BUFFER, buffer);
+    glEnableVertexAttribArray(attrib->position);
+    glEnableVertexAttribArray(attrib->normal);
+    glEnableVertexAttribArray(attrib->uv);
+    glVertexAttribPointer(attrib->position, 3, GL_FLOAT, GL_FALSE,
+        sizeof(GLfloat) * 10, 0);
+    glVertexAttribPointer(attrib->normal, 3, GL_FLOAT, GL_FALSE,
+        sizeof(GLfloat) * 10, (GLvoid *)(sizeof(GLfloat) * 3));
+    glVertexAttribPointer(attrib->uv, 4, GL_FLOAT, GL_FALSE,
+        sizeof(GLfloat) * 10, (GLvoid *)(sizeof(GLfloat) * 6));
+    glDrawArrays(GL_TRIANGLES, offset, count);
     glDisableVertexAttribArray(attrib->position);
     glDisableVertexAttribArray(attrib->normal);
     glDisableVertexAttribArray(attrib->uv);
@@ -365,6 +390,7 @@ void draw_lines(Attrib *attrib, GLuint buffer, int components, int count) {
 // Arguments:
 // Returns: none
 void draw_chunk(Attrib *attrib, Chunk *chunk) {
+    int offset = 0;
     draw_triangles_3d_ao(attrib, chunk->buffer, chunk->faces * 6);
 }
 
@@ -416,6 +442,7 @@ void draw_cube(Attrib *attrib, GLuint buffer) {
 // Arguments:
 // Returns: none
 void draw_plant(Attrib *attrib, GLuint buffer) {
+    int offset = 0;
     draw_item(attrib, buffer, 24);
 }
 
@@ -425,7 +452,8 @@ void draw_plant(Attrib *attrib, GLuint buffer) {
 // - player
 // Returns: none
 void draw_player(Attrib *attrib, Player *player) {
-    draw_cube(attrib, player->buffer);
+    draw_cube_offset(attrib, player->buffer, 0);
+    draw_cube_offset(attrib, player->buffer, 36);
 }
 
 // Find a player with a certain id
@@ -441,60 +469,6 @@ Player *find_player(int id) {
         }
     }
     return 0;
-}
-
-// Update a player with a new position and rotation.
-// Arguments:
-// - player: player to modify
-// - x: new position x
-// - y: new position y
-// - z: new position z
-// - rx: new rotation x
-// - ry: new rotation y
-// - interpolate: whether to interpolate position
-void update_player(Player *player,
-    float x, float y, float z, float rx, float ry, int interpolate)
-{
-    if (interpolate) {
-        State *s1 = &player->state1;
-        State *s2 = &player->state2;
-        memcpy(s1, s2, sizeof(State));
-        s2->x = x; s2->y = y; s2->z = z; s2->rx = rx; s2->ry = ry;
-        s2->t = glfwGetTime();
-        if (s2->rx - s1->rx > PI) {
-            s1->rx += 2 * PI;
-        }
-        if (s1->rx - s2->rx > PI) {
-            s1->rx -= 2 * PI;
-        }
-    }
-    else {
-        State *s = &player->state;
-        s->x = x; s->y = y; s->z = z; s->rx = rx; s->ry = ry;
-        del_buffer(player->buffer);
-        player->buffer = gen_player_buffer(s->x, s->y, s->z, s->rx, s->ry);
-    }
-}
-
-// Arguments:
-// - player
-// Returns: none
-void interpolate_player(Player *player) {
-    State *s1 = &player->state1;
-    State *s2 = &player->state2;
-    float t1 = s2->t - s1->t;
-    float t2 = glfwGetTime() - s2->t;
-    t1 = MIN(t1, 1);
-    t1 = MAX(t1, 0.1);
-    float p = MIN(t2 / t1, 1);
-    update_player(
-        player,
-        s1->x + (s2->x - s1->x) * p,
-        s1->y + (s2->y - s1->y) * p,
-        s1->z + (s2->z - s1->z) * p,
-        s1->rx + (s2->rx - s1->rx) * p,
-        s1->ry + (s2->ry - s1->ry) * p,
-        0);
 }
 
 // Look for a player with the given id and remove that player's data
@@ -829,86 +803,25 @@ int hit_test_face(Player *player, int *x, int *y, int *z, int *face) {
     return 0;
 }
 
-// Do block collision for a player.
-// Arguments:
-// - height: player height in blocks
-// - x: pointer to current player x position of feet
-// - y: pointer to current player y position of feet
-// - z: pointer to current player z position of feet
-// Returns:
-// - non-zero if the player collided with a block
-// - may modify the x, y, and z values
-int collide(int height, float *x, float *y, float *z) {
-    // Default result: no collision
-    int result = 0;
-    // Find the block map that the position is in
-    int p = chunked(*x);
-    int q = chunked(*z);
-    Chunk *chunk = find_chunk(p, q);
-    if (!chunk) {
-        return result;
-    }
-    Map *map = &chunk->map;
-    // Get the nearest block position
-    int nx = roundf(*x);
-    int ny = roundf(*y);
-    int nz = roundf(*z);
-    float px = *x - nx;
-    float py = *y - ny;
-    float pz = *z - nz;
-    float pad = 0.25;
-    // Check each block position within the player's height
-    for (int dy = 0; dy < height; dy++) {
-        if (px < -pad && is_obstacle(map_get(map, nx - 1, ny - dy, nz))) {
-            *x = nx - pad;
-        }
-        if (px > pad && is_obstacle(map_get(map, nx + 1, ny - dy, nz))) {
-            *x = nx + pad;
-        }
-        if (py < -pad && is_obstacle(map_get(map, nx, ny - dy - 1, nz))) {
-            *y = ny - pad;
-            result = 1;
-        }
-        if (py > pad && is_obstacle(map_get(map, nx, ny - dy + 1, nz))) {
-            *y = ny + pad;
-            result = 1;
-        }
-        if (pz < -pad && is_obstacle(map_get(map, nx, ny - dy, nz - 1))) {
-            *z = nz - pad;
-        }
-        if (pz > pad && is_obstacle(map_get(map, nx, ny - dy, nz + 1))) {
-            *z = nz + pad;
-        }
-    }
-    return result;
-}
-
-// Predicate function to return whether a player position instersects the given
+// Function to return whether a player position instersects the given
 // block position.
 // Arguments:
 // - height
-// - x: player x position
-// - y: player y position
-// - z: player z position
-// - hx: block x position to test
-// - hy: block y position to test
-// - hz: block z position to test
+// - x, y, z: player position
+// - vx, vy, vz: player velocity
+// - hx, hy, hz: block position to test
 // Returns:
 // - non-zero if the player intersects the given block position
 int player_intersects_block(
-    int height,
     float x, float y, float z,
+    float vx, float vy, float vz,
     int hx, int hy, int hz)
 {
-    int nx = roundf(x);
-    int ny = roundf(y);
-    int nz = roundf(z);
-    for (int i = 0; i < height; i++) {
-        if (nx == hx && ny - i == hy && nz == hz) {
-            return 1;
-        }
-    }
-    return 0;
+    float bx, by, bz, ex, ey, ez;
+    player_hitbox(x, y, z, &bx, &by, &bz, &ex, &ey, &ez);
+    box_broadphase(bx, by, bz, ex, ey, ez, vx, vy, vz, &bx, &by, &bz,
+            &ex, &ey, &ez);
+    return box_intersect_block(bx, by, bz, ex, ey, ez, hx, hy, hz);
 }
 
 // Generate the buffer data for a single sign model
@@ -2111,6 +2024,57 @@ void render_wireframe(Attrib *attrib, Player *player) {
     }
 }
 
+void render_box_wireframe(Attrib *attrib, DebugBox *box, Player *p)
+{
+    if (!box->active)
+    {
+        return;
+    }
+    State *s = &p->state;
+    glUseProgram(attrib->program);
+    float matrix[16];
+    glLineWidth(3);
+    set_matrix_3d(
+            matrix, g->width, g->height,
+            s->x, s->y, s->z, s->rx, s->ry, g->fov, g->ortho,
+            g->render_radius);
+    glUseProgram(attrib->program);
+    //glEnable(GL_COLOR_LOGIC_OP);
+    glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
+    draw_lines(attrib, box->buffer, 3, 24);
+    glLineWidth(1);
+    //glDisable(GL_COLOR_LOGIC_OP);
+}
+
+// Render all of the players' hitboxes except for the given player
+// Arguments:
+// - attrib
+// - p: given player
+// Returns: none
+void render_players_hitboxes(Attrib *attrib, Player *p)
+{
+    State *s = &p->state;
+    glUseProgram(attrib->program);
+    glLineWidth(2);
+    for (int i = 0; i < g->player_count; i++) {
+        Player *other = g->players + i;
+        if (other != p) {
+            float matrix[16];
+            set_matrix_3d(
+                    matrix, g->width, g->height,
+                    s->x, s->y, s->z, s->rx, s->ry, g->fov, g->ortho,
+                    g->render_radius);
+            glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
+            State *os = &other->state;
+            float x, y, z, ex, ey, ez;
+            player_hitbox(os->x, os->y, os->z, &x, &y, &z, &ex, &ey, &ez);
+            GLuint box_buffer = gen_box_wireframe_buffer(x, y, z, ex, ey, ez);
+            draw_lines(attrib, box_buffer, 3, 24);
+            del_buffer(box_buffer);
+        }
+    }
+}
+
 // Arguments:
 // - attrib
 // Returns: none
@@ -2463,11 +2427,25 @@ void parse_command(const char *buffer, int forward) {
     char username[128] = {0};
     char token[128] = {0};
     char server_addr[MAX_ADDR_LENGTH];
-    // Note: DEFAULT_PORT is defined in "client.h"
     int server_port = DEFAULT_PORT;
     char filename[MAX_PATH_LENGTH];
     int radius, count, xc, yc, zc;
-    if (sscanf(buffer, "/identity %128s %128s", username, token) == 2) {
+    if (strcmp(buffer, "/ghost") == 0)
+    {
+        // spawn ghost
+        Player *me = &g->players[0];
+        delete_ghost(me);
+        create_ghost(me);
+        add_message("Added ghost");
+    }
+    else if (strcmp(buffer, "/noghost") == 0)
+    {
+        // remove ghost
+        Player *me = &g->players[0];
+        delete_ghost(me);
+        add_message("Removed ghost");
+    }
+    else if (sscanf(buffer, "/identity %128s %128s", username, token) == 2) {
         db_auth_set(username, token);
         add_message("Successfully imported identity token!");
         login();
@@ -2596,9 +2574,25 @@ void on_light() {
     }
 }
 
-// Arguments: none
-// Returns: none
-void on_left_click() {
+// Try to place a block where the player is looking and return success
+int place_block(void)
+{
+    State *s = &g->players->state;
+    int hx, hy, hz;
+    int hw = hit_test(1, s->x, s->y, s->z, s->rx, s->ry, &hx, &hy, &hz);
+    if (hy > 0 && hy < 256 && is_obstacle(hw)) {
+        if (!player_intersects_block(s->x, s->y, s->z, s->vx, s->vy, s->vz, hx, hy, hz)) {
+            set_block(hx, hy, hz, items[g->item_index]);
+            record_block(hx, hy, hz, items[g->item_index]);
+            return 1;
+        }
+    }
+    return 0;
+}
+
+// Try to break a block where the player is looking and return success
+int break_block(void)
+{
     State *s = &g->players->state;
     int hx, hy, hz;
     int hw = hit_test(0, s->x, s->y, s->z, s->rx, s->ry, &hx, &hy, &hz);
@@ -2608,19 +2602,35 @@ void on_left_click() {
         if (is_plant(get_block(hx, hy + 1, hz))) {
             set_block(hx, hy + 1, hz, 0);
         }
+        return 1;
+    }
+    return 0;
+}
+
+// Destroy block on left click, has a cool-down
+void on_left_click() {
+    State *s = &g->players->state;
+    float t = glfwGetTime();
+    if (t - s->dblockt > g->physics.dblockcool)
+    {
+        if (break_block())
+        {
+            s->dblockt = t;
+            s->autot = t;
+        }
     }
 }
 
-// Arguments: none
-// Returns: none
+// Place block on left click, has a cool-down
 void on_right_click() {
     State *s = &g->players->state;
-    int hx, hy, hz;
-    int hw = hit_test(1, s->x, s->y, s->z, s->rx, s->ry, &hx, &hy, &hz);
-    if (hy > 0 && hy < 256 && is_obstacle(hw)) {
-        if (!player_intersects_block(2, s->x, s->y, s->z, hx, hy, hz)) {
-            set_block(hx, hy, hz, items[g->item_index]);
-            record_block(hx, hy, hz, items[g->item_index]);
+    float t = glfwGetTime();
+    if (t - s->blockt > g->physics.blockcool)
+    {
+        if (place_block())
+        {
+            s->blockt = t;
+            s->autot = t;
         }
     }
 }
@@ -2870,11 +2880,11 @@ void create_window() {
         window_width, window_height, "Miscraft", monitor, NULL);
 }
 
-// Arguments: none
-// Returns: none
+// Move camera with mouse movement
 void handle_mouse_input() {
     int exclusive =
         glfwGetInputMode(g->window, GLFW_CURSOR) == GLFW_CURSOR_DISABLED;
+    // Previous values
     static double px = 0;
     static double py = 0;
     State *s = &g->players->state;
@@ -2889,12 +2899,41 @@ void handle_mouse_input() {
         else {
             s->ry -= (my - py) * m;
         }
+        // Keep rx in a nice range
         if (s->rx < 0) {
             s->rx += RADIANS(360);
         }
         if (s->rx >= RADIANS(360)){
             s->rx -= RADIANS(360);
         }
+        // Update body rotation
+        if (fabs(s->rx - s->brx) > 0.8) {
+            // move
+            s->brx += (mx - px) * m;
+        }
+        if (s->brx < 0) {
+            s->brx += RADIANS(360);
+        }
+        if (s->brx >= RADIANS(360)){
+            s->brx -= RADIANS(360);
+        }
+        // Auto-break or auto-place when holding down mouse button
+        float t = glfwGetTime();
+        if (t - s->autot > g->physics.ablockcool && glfwGetMouseButton(g->window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS)
+        {
+            if (place_block())
+            {
+                s->autot = t;
+            }
+        }
+        if (t - s->autot > g->physics.adblockcool && glfwGetMouseButton(g->window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
+        {
+            if (break_block())
+            {
+                s->autot = t;
+            }
+        }
+        // Clamp ry
         s->ry = MAX(s->ry, -RADIANS(90));
         s->ry = MIN(s->ry, RADIANS(90));
         px = mx;
@@ -2905,66 +2944,165 @@ void handle_mouse_input() {
     }
 }
 
-// Arguments:
-// - dt: delta time
-// Returns: none
+// Player movement
+// TODO: rotate player body in movement direction.
 void handle_movement(double dt) {
-    static float dy = 0;
     State *s = &g->players->state;
-    int sz = 0;
-    int sx = 0;
+    int sz = 0, sx = 0;
     if (!g->typing) {
         float m = dt * 1.0;
         g->ortho = glfwGetKey(g->window, CRAFT_KEY_ORTHO) ? 64 : 0;
         g->fov = glfwGetKey(g->window, CRAFT_KEY_ZOOM) ? 15 : 65;
-        if (glfwGetKey(g->window, CRAFT_KEY_FORWARD)) sz--;
-        if (glfwGetKey(g->window, CRAFT_KEY_BACKWARD)) sz++;
-        if (glfwGetKey(g->window, CRAFT_KEY_LEFT)) sx--;
-        if (glfwGetKey(g->window, CRAFT_KEY_RIGHT)) sx++;
-        if (glfwGetKey(g->window, GLFW_KEY_LEFT)) s->rx -= m;
-        if (glfwGetKey(g->window, GLFW_KEY_RIGHT)) s->rx += m;
-        if (glfwGetKey(g->window, GLFW_KEY_UP)) s->ry += m;
-        if (glfwGetKey(g->window, GLFW_KEY_DOWN)) s->ry -= m;
+        if (glfwGetKey(g->window, CRAFT_KEY_FORWARD))  { sz--; }
+        if (glfwGetKey(g->window, CRAFT_KEY_BACKWARD)) { sz++; }
+        if (glfwGetKey(g->window, CRAFT_KEY_LEFT))     { sx--; }
+        if (glfwGetKey(g->window, CRAFT_KEY_RIGHT))    { sx++; }
+        if (glfwGetKey(g->window, GLFW_KEY_LEFT))      { s->rx -= m; }
+        if (glfwGetKey(g->window, GLFW_KEY_RIGHT))     { s->rx += m; }
+        if (glfwGetKey(g->window, GLFW_KEY_UP))        { s->ry += m; }
+        if (glfwGetKey(g->window, GLFW_KEY_DOWN))      { s->ry -= m; }
     }
-    float vx, vy, vz;
-    get_motion_vector(s->flying, sz, sx, s->rx, s->ry, &vx, &vy, &vz);
+    // Get acceleration motion from the inputs
+    float ax, ay, az;
+    get_motion_vector(s->flying, sz, sx, s->rx, s->ry, &ax, &ay, &az);
+    // Handle jump/fly
     if (!g->typing) {
+        // Handle jump or fly up
         if (glfwGetKey(g->window, CRAFT_KEY_JUMP)) {
-            if (s->flying) {
-                vy = 1;
+            float t = glfwGetTime();
+            if (s->flying)
+            {
+                ay = g->physics.flysp;
             }
-            else if (dy == 0) {
-                dy = 8;
+            else if (s->is_grounded && (t - s->jumpt > g->physics.jumpcool)) {
+                ay = g->physics.jumpaccel;
+                s->jumpt = t;
+                s->is_grounded = 0;
+            }
+        }
+        // Handle fly down
+        if (glfwGetKey(g->window, CRAFT_KEY_CROUCH)) {
+            if (s->flying)
+            {
+                ay = -g->physics.flysp;
             }
         }
     }
-    float speed = s->flying ? 20 : 5;
-    int estimate = roundf(sqrtf(
-        powf(vx * speed, 2) +
-        powf(vy * speed + ABS(dy) * 2, 2) +
-        powf(vz * speed, 2)) * dt * 8);
-    int step = MAX(8, estimate);
-    float ut = dt / step;
-    vx = vx * ut * speed;
-    vy = vy * ut * speed;
-    vz = vz * ut * speed;
-    for (int i = 0; i < step; i++) {
-        if (s->flying) {
-            dy = 0;
-        }
-        else {
-            dy -= ut * 25;
-            dy = MAX(dy, -250);
-        }
-        s->x += vx;
-        s->y += vy + dy * ut;
-        s->z += vz;
-        if (collide(2, &s->x, &s->y, &s->z)) {
-            dy = 0;
+    // Add acceleration from input motion to velocity
+    {
+        // horizontal and vertical speed
+        float hspeed = s->flying? g->physics.flysp : g->physics.walksp;
+        s->vx += ax * hspeed * dt;
+        s->vz += az * hspeed * dt;
+        s->vy += ay * dt;
+    }
+    // Apply gravity
+    if (!s->flying) {
+        s->vy -= g->physics.grav * dt;
+    }
+    // Set a minimum velocity (squared) for velocity to be clamped to 0
+    {
+        float vminsq = 0.01;
+        if (powf(s->vx,2) + powf(s->vy,2) + powf(s->vz,2) <= vminsq ) {
+            s->vx = 0;
+            s->vy = 0;
+            s->vz = 0;
         }
     }
+    // Decay velocity differently for flying or not flying
+    if (s->flying) {
+        float r = g->physics.flyr * dt;
+        s->vx -= s->vx * r;
+        s->vy -= s->vy * r;
+        s->vz -= s->vz * r;
+    }
+    else {
+        // resistance horizontal factor, and resistance vertical factor
+        float rh = dt * (s->is_grounded? g->physics.groundr : g->physics.airhr);
+        s->vx -= s->vx * rh;
+        s->vz -= s->vz * rh;
+        s->vy -= s->vy * g->physics.airvr * dt;
+    }
+    // Set a maximum y velocity
+    {
+        float vy_max = 150;
+        if (fabs(s->vy) > vy_max) {
+            s->vy = vy_max * SIGN(s->vy);
+        }
+    }
+    // Get player hitbox
+    float bx, by, bz, ex, ey, ez;
+    player_hitbox(s->x, s->y, s->z, &bx, &by, &bz, &ex, &ey, &ez);
+    // Handle dynamic collision
+    // "nx", "ny", "nz" = normal vector from swept collision
+    float nx, ny, nz;
+    // "t" = collision time relative to this frame (between 0.0 and 1.0)
+    float t = box_sweep_world(
+                bx, by, bz, ex, ey, ez, s->vx * dt, s->vy * dt, s->vz * dt,
+                &nx, &ny, &nz);
+    // Reset this flag because collision will set it if necessary.
+    s->is_grounded = 0;
+    // There is no collision this frame if "t == 1.0".
+    if (0.0 <= t && t < 1.0)
+    {
+        // There was a collision
+        // Do multiple collision steps per frame
+        const int steps = 4;
+        const float ut = dt / steps;
+        const float oppose = 1.2 * ut;
+        const float pad = 0.001;
+        for (int i = 0; i < steps; i++)
+        {
+            t = box_sweep_world(
+                    bx, by, bz, ex, ey, ez, s->vx * ut, s->vy * ut, s->vz * ut,
+                    &nx, &ny, &nz);
+            // Move up to the collision moment
+            bx += s->vx * t * ut;
+            by += s->vy * t * ut;
+            bz += s->vz * t * ut;
+            // Offset the box by pad to prevent the hitbox from being exactly
+            // next to a block edge
+            // Respond to the collision normal by opposing velocity in that
+            // direction.
+            if (nx != 0.0)
+            {
+                // In x direction
+                bx += nx * pad;
+                s->vx = nx * oppose;
+            }
+            else if (ny != 0.0)
+            {
+                // In y direction
+                by += ny * pad;
+                s->vy = ny * oppose;
+                // Detect hitting a floor
+                if (ny > 0)
+                {
+                    s->is_grounded = 1;
+                }
+            }
+            else if (nz != 0.0)
+            {
+                // In z direction
+                bz += nz * pad;
+                s->vz = nz * oppose;
+            }
+        }
+        // Update player position
+        player_pos_inv(bx, by, bz, &s->x, &s->y, &s->z);
+    }
+    else
+    {
+        // There was no collision
+        // Add full velocity to position
+        s->x += s->vx * dt;
+        s->y += s->vy * dt;
+        s->z += s->vz * dt;
+    }
+    // Make sure position does not go below the world
     if (s->y < 0) {
-        s->y = highest_block(s->x, s->z) + 2;
+        s->vy = 0;
+        s->y = highest_block(s->x, s->z) + PLAYER_HEIGHT + PLAYER_HEADY;
     }
 }
 
@@ -3017,7 +3155,9 @@ void parse_buffer(char *buffer) {
             &bp, &bq, &bx, &by, &bz, &bw) == 6)
         {
             _set_block(bp, bq, bx, by, bz, bw, 0);
-            if (player_intersects_block(2, s->x, s->y, s->z, bx, by, bz)) {
+            if (player_intersects_block(
+                        s->x, s->y, s->z, s->vx, s->vy, s->vz, bx, by, bz)) 
+            {
                 s->y = highest_block(s->x, s->z) + 2;
             }
         }
@@ -3121,5 +3261,196 @@ void reset_model() {
     g->day_length = DAY_LENGTH;
     glfwSetTime(g->day_length / 3.0);
     g->time_changed = 1;
+    // Default physics
+    memset(&g->physics, 0, sizeof(g->physics));
+    g->physics.flyr = 3.0;
+    g->physics.airhr = 3.4;
+    g->physics.airvr = 0.1;
+    g->physics.groundr = 4.1;
+    g->physics.flysp = 100.0;
+    g->physics.walksp = 50.0;
+    g->physics.grav = 60.0;
+    g->physics.jumpaccel = 900.0;
+    g->physics.jumpcool = 0.31;
+    g->physics.blockcool = 0.1;
+    g->physics.ablockcool = 0.2;
+    g->physics.dblockcool = 0.1;
+    g->physics.adblockcool = 0.2;
 }
+
+// DEBUG
+int ghost_id(int pid) {
+    return -9999 + pid;
+}
+
+// DEBUG
+// Create a player model "ghost" for given player
+void create_ghost(Player *p) {
+    Player *player = g->players + g->player_count;
+    g->player_count++;
+    player->id = ghost_id(p->id);
+    player->buffer = 0;
+    snprintf(player->name, MAX_NAME_LENGTH, "ghost%d", p->id);
+    update_player(player, p->state.x, p->state.y, p->state.z,
+                    p->state.rx, p->state.ry, 1);
+    update_player(player, p->state.x, p->state.y, p->state.z,
+                    p->state.rx, p->state.ry, 1);
+    player->state.brx = player->state.rx;
+}
+
+// DEBUG
+void delete_ghost(Player *p) {
+    if (p)
+    {
+        delete_player(ghost_id(p->id));
+    }
+}
+
+// Get whether a certain block face is covered or exposed.
+// A face is exposed unless an obstacle block is in front of it.
+// Arguments:
+// - x, y, z: block to check
+// - nx, ny, nz: normal of the block's face to check
+// Returns:
+// - non-zero if the given block face is covered
+int is_block_face_covered(int x, int y, int z, float nx, float ny, float nz) {
+    assert(nx != 0.0 || ny != 0.0 || nz != 0.0);
+    int w = get_block(roundf(x + nx), roundf(y + ny), roundf(z + nz));
+    return is_obstacle(w);
+}
+
+// Return whether a bounding box currently intersects a block in the world.
+// Arguments:
+// - x, y, z: box center position
+// - ex, ey, ez: box extents
+// Returns: intersected block location through cx, cy, cz
+int box_intersect_world(
+        float x, float y, float z, float ex, float ey, float ez,
+        int *cx, int *cy, int *cz)
+{
+    int result = 0;
+    int x0, y0, z0, x1, y1, z1;
+    // Currently found minimum distance squared
+    float dsq = INFINITY;
+    box_nearest_blocks(x, y, z, ex, ey, ez, &x0, &y0, &z0, &x1, &y1, &z1);
+    for (int bx = x0; bx <= x1; bx++) {
+        for (int by = y0; by <= y1; by++) {
+            for (int bz = z0; bz <= z1; bz++) {
+                int w = get_block(bx, by, bz);
+                if (!is_obstacle(w)) {
+                    continue;
+                }
+                if (!box_intersect_block(x, y, z, ex, ey, ez, bx, by, bz)) {
+                    continue;
+                }
+                // Specific distance squared
+                float sdsq =
+                    powf(x - bx, 2)
+                    + powf(y - by, 2) 
+                    + powf(z - bz, 2);
+                // Check by distance
+                if (sdsq < dsq)
+                {
+                    dsq = sdsq;
+                    *cx = bx;
+                    *cy = by;
+                    *cz = bz;
+                    // Collision did happen
+                    result = 1;
+                }
+            }
+        }
+    }
+    return result;
+}
+
+// Sweep moving bounding box with all nearby blocks in the world. Returns the
+// info for the earliest intersection time.
+// Arguments:
+// - x, y, z: box center position
+// - ex, ey, ez: box extents
+// - vx, vy, vz: box velocity
+// - nx, ny, nz: pointers to output the normal vector to
+// - check_face: flag
+// Returns:
+// - earliest collision time, between 0.0 and 1.0
+// - writes values out to nx, ny, and nz
+// - if the returned time is 1.0, then the normal vector may not be initialized
+float box_sweep_world(
+        float x, float y, float z, float ex, float ey, float ez,
+        float vx, float vy, float vz, float *nx, float *ny, float *nz)
+{
+    // Default result
+    *nx = *ny = *nz = 0;
+    float t = 1.0;
+    // No velocity -> no collision
+    if (vx == 0 && vy == 0 && vz == 0)
+    {
+        return t;
+    }
+    float bbx, bby, bbz, bbex, bbey, bbez;
+    box_broadphase(
+            x, y, z, ex, ey, ez, vx, vy, vz, &bbx, &bby, &bbz,
+            &bbex, &bbey, &bbez);
+
+    // Current block that the bounding box is inside of
+    int cx, cy, cz;
+    cx = roundf(x);
+    cy = roundf(y);
+    cz = roundf(z);
+    // All possible surrounding blocks
+    int x0, y0, z0, x1, y1, z1;
+    box_nearest_blocks(
+            bbx, bby, bbz, bbex, bbey, bbez, &x0, &y0, &z0, &x1, &y1, &z1);
+    for (int bx = x0; bx <= x1; bx++) {
+        for (int by = y0; by <= y1; by++) {
+            for (int bz = z0; bz <= z1; bz++) {
+                // Skip the current block
+                if (bx == cx && by == cy && bz == cz)
+                {
+                    continue;
+                }
+                // Only collide with obstacle blocks
+                int w = get_block(bx, by, bz);
+                if (!is_obstacle(w)) 
+                {
+                    continue;
+                }
+                // Box must intersect the broad-phase bounding box
+                if (!box_intersect_block(
+                            bbx, bby, bbz, bbex, bbey, bbez, bx, by, bz))
+                {
+                    continue;
+                }
+                // Check potential swept block collision
+                float snx, sny, snz;
+                float st = box_sweep_block(
+                        x, y, z, ex, ey, ez, bx, by, bz, vx, vy, vz,
+                        &snx, &sny, &snz);
+                if (st < 0.0 || st >= 1.0) 
+                {
+                    // No collision for this frame
+                    continue;
+                }
+                // Can only collide with an exposed block face or a face covered
+                // by the current block the player is in
+                if (!((bx + snx == cx) && (by + sny == cy) && (bz + sny == cz))
+                        && is_block_face_covered(bx, by, bz, snx, sny, snz))
+                {
+                    continue;
+                }
+                if (st >= 0 && st < t)
+                {
+                    //dsq = sdsq;
+                    t = st;
+                    *nx = snx;
+                    *ny = sny;
+                    *nz = snz;
+                }
+            }
+        }
+    }
+    return t;
+}
+
 

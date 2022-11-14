@@ -3,7 +3,9 @@
 #include "matrix.h"
 #include "util.h"
 
-// Normalize a vector, (x, y, z)
+// Matrix operations for 4x4 square matrices
+
+// Normalize a 3-vector, (x, y, z)
 // (So it has magnitude of 1).
 void normalize(float *x, float *y, float *z) {
     float d = sqrtf((*x) * (*x) + (*y) * (*y) + (*z) * (*z));
@@ -34,6 +36,12 @@ void mat_identity(float *matrix) {
     matrix[15] = 1;
 }
 
+// Set matrix to translation matrix
+//   ( 1 0 0 0 )
+//   ( 0 1 0 0 )
+//   ( 0 0 1 0 )
+//   ( x y z 1 )
+// ^ x, y, z = dx, dy dz
 void mat_translate(float *matrix, float dx, float dy, float dz) {
     matrix[0] = 1;
     matrix[1] = 0;
@@ -50,6 +58,31 @@ void mat_translate(float *matrix, float dx, float dy, float dz) {
     matrix[12] = dx;
     matrix[13] = dy;
     matrix[14] = dz;
+    matrix[15] = 1;
+}
+
+// Set the given matrix to
+//   ( x 0 0 0 )
+//   ( 0 y 0 0 )
+//   ( 0 0 z 0 )
+//   ( 0 0 0 1 )
+void mat_scale(float *matrix, float x, float y, float z)
+{
+    matrix[0] = x;
+    matrix[1] = 0;
+    matrix[2] = 0;
+    matrix[3] = 0;
+    matrix[4] = 0;
+    matrix[5] = y;
+    matrix[6] = 0;
+    matrix[7] = 0;
+    matrix[8] = 0;
+    matrix[9] = 0;
+    matrix[10] = z;
+    matrix[11] = 0;
+    matrix[12] = 0;
+    matrix[13] = 0;
+    matrix[14] = 0;
     matrix[15] = 1;
 }
 
@@ -76,6 +109,12 @@ void mat_rotate(float *matrix, float x, float y, float z, float angle) {
     matrix[15] = 1;
 }
 
+// Multiply vector by matrix
+//   vector := a * b
+// Arguments:
+// - vector: output result vector
+// - a: matrix
+// - b: 4-vector
 void mat_vec_multiply(float *vector, float *a, float *b) {
     float result[4];
     for (int i = 0; i < 4; i++) {
@@ -92,6 +131,12 @@ void mat_vec_multiply(float *vector, float *a, float *b) {
     }
 }
 
+// Matrix multiplication by matrix
+//   matrix := a * b
+// Arguments:
+// - matrix: output result matrix (must have room for at least 16 floats)
+// - a: first matrix
+// - b: second matrix
 void mat_multiply(float *matrix, float *a, float *b) {
     float result[16];
     for (int c = 0; c < 4; c++) {
@@ -111,6 +156,17 @@ void mat_multiply(float *matrix, float *a, float *b) {
     }
 }
 
+// Apply a matrix to multiple points contained in the area pointed to by data.
+// Arguments:
+// - data: data containing the 3D points to transform
+// - matrix: transformation matrix to apply
+// - count: number of points
+// - offset: initial offset into data
+// - stride: number of elements between each of the points, including the points
+//   themselves (should be >= 3)
+// Returns:
+// - no return value
+// - modifies data
 void mat_apply(float *data, float *matrix, int count, int offset, int stride) {
     float vec[4] = {0, 0, 0, 1};
     for (int i = 0; i < count; i++) {
@@ -220,11 +276,8 @@ void set_matrix_2d(float *matrix, int width, int height) {
 // - matrix: matrix to modify
 // - width: target viewport width
 // - height: target viewport height
-// - x
-// - y
-// - z
-// - rx: rotation x
-// - ry: rotation y
+// - x, y, z:
+// - rx, ry: rotation x and y
 // - fov: field of view
 // - ortho: flag to indicate an orthographic view
 // - radius

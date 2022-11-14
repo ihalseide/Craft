@@ -79,13 +79,12 @@ void make_cube_faces(
     };
     float *d = data;
     // Scale the texture atlas so that a 16x16 tile takes up the whole block
-    float s = 0.0625;
+    float s = 0.0625; // 1/16th
     float a = 0 + 1 / 2048.0;
     float b = s - 1 / 2048.0;
     int faces[6] = {left, right, top, bottom, front, back};
     int tiles[6] = {wleft, wright, wtop, wbottom, wfront, wback};
     for (int i = 0; i < 6; i++) {
-        // i is an index into the faces
         // Do not write to faces which were not specified.
         if (faces[i] == 0) {
             continue;
@@ -235,16 +234,14 @@ void make_plant(
 // Make a player model
 // Arguments:
 // - data: output pointer
-// - x:
-// - y:
-// - z:
-// - rx:
-// - ry:
+// - x, y, z: player position
+// - rx, ry: rotation x and y
+// - brx: body rotation x
 // Returns:
 // - writes specific values to the data pointer
 void make_player(
     float *data,
-    float x, float y, float z, float rx, float ry)
+    float x, float y, float z, float rx, float ry, float brx)
 {
     float ao[6][4] = {0};
     float light[6][4] = {
@@ -261,23 +258,65 @@ void make_player(
         data, ao, light,
         1, 1, 1, 1, 1, 1,
         226, 224, 241, 209, 225, 227,
-        0, 0, 0, 0.4);
+        0, 0, 0, 0.35);
     float ma[16];
     float mb[16];
+    // Rotate
     mat_identity(ma);
     mat_rotate(mb, 0, 1, 0, rx);
     mat_multiply(ma, mb, ma);
     mat_rotate(mb, cosf(rx), 0, sinf(rx), -ry);
     mat_multiply(ma, mb, ma);
-    mat_apply(data, ma, 36, 3, 10);
+    // Translate
     mat_translate(mb, x, y, z);
     mat_multiply(ma, mb, ma);
     mat_apply(data, ma, 36, 0, 10);
+    // Make a player body
+    const int offset = 36*10;
+    make_cube_faces(
+        data + offset, ao, light,
+        1, 1, 1, 1, 1, 1,
+        230, 228, 245, 213, 229, 231,
+        0, 0, 0, 1);
+    mat_translate(ma, x, y - 0.70, z);
+    mat_rotate(mb, 0, 1, 0, brx);
+    mat_multiply(ma, ma, mb);
+    mat_scale(mb, 0.32, 0.41, 0.20);
+    mat_multiply(ma, ma, mb);
+    mat_apply(data, ma, 36, offset, 10);
+}
+
+// Make a 3D box wireframe model
+// Arguments:
+// - data: output pointer (must have room for 24*3 floats)
+// - x: x position
+// - y: y position
+// - z: z position
+// - ex: x extent (distance from center to face)
+// - ey: y extent (distance from center to face)
+// - ez: z extent (distance from center to face)
+// Returns:
+// - writes specific values to the data pointer
+void make_box_wireframe(
+        float *data, float x, float y, float z, float ex, float ey, float ez)
+{
+    // Make a unit cube at the origin because we will translate and scale it
+    // with matrix math.
+    make_cube_wireframe(data, 0, 0, 0, 1);
+    float ma[16];
+    float mb[16];
+    mat_translate(ma, x, y, z);
+    mat_scale(mb, ex, ey, ez);
+    mat_multiply(ma, ma, mb);
+    const int count = 24;
+    const int offset = 0;
+    const int stride = 3;
+    mat_apply(data, ma, count, offset, stride);
 }
 
 // Make a cube wireframe model
 // Arguments:
-// - data: output pointer (must have room for 24*3 integers)
+// - data: output pointer (must have room for 24*3 floats)
 // - x: block x position
 // - y: block y position
 // - z: block z position

@@ -18,10 +18,13 @@ void make_plant(
 
 void make_player(
     float *data,
-    float x, float y, float z, float rx, float ry);
+    float x, float y, float z, float rx, float ry, float brx);
 
 void make_cube_wireframe(
     float *data, float x, float y, float z, float n);
+
+void make_box_wireframe(
+        float *data, float x, float y, float z, float ex, float ey, float ez);
 
 void make_character(
     float *data,

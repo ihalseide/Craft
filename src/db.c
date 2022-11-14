@@ -342,7 +342,9 @@ void db_save_state(float x, float y, float z, float rx, float ry, int flying) {
 // - flying: pointer to flying flag to load value into
 // Returns:
 // - non-zero if the state entry was successfully found and loaded
-int db_load_state(float *x, float *y, float *z, float *rx, float *ry, int *flying) {
+int db_load_state(
+        float *x, float *y, float *z, float *rx, float *ry, int *flying) 
+{
     if (!db_enabled) {
         return 0;
     }
