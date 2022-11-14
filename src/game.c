@@ -1,32 +1,33 @@
-#include <GL/glew.h>
-#include <GLFW/glfw3.h>
-#include <math.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <limits.h>
-#include <assert.h>
-
 #include "auth.h"
 #include "client.h"
 #include "config.h"
 #include "cube.h"
 #include "db.h"
+#include "game.h"
+#include "hitbox.h"
 #include "item.h"
 #include "map.h"
 #include "matrix.h"
 #include "noise.h"
+#include "player.h"
 #include "sign.h"
 #include "tinycthread.h"
 #include "util.h"
 #include "world.h"
-#include "game.h"
-#include "hitbox.h"
-#include "player.h"
+#include <GL/glew.h>
+#include <GLFW/glfw3.h>
+#include <assert.h>
+#include <limits.h>
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
 
 // The main game state is kept here
 static Model model;
 Model *g = &model;
+
 
 // Convert a value in block space to chunk space
 // Arguments:
@@ -36,6 +37,7 @@ Model *g = &model;
 int chunked(float x) {
     return floorf(roundf(x) / CHUNK_SIZE);
 }
+
 
 // Get the current time of day
 // Depends on glfwGetTime()
@@ -53,6 +55,7 @@ float time_of_day() {
     return t;
 }
 
+
 // Arguments: none
 // Returns:
 // - daylight value
@@ -67,6 +70,7 @@ float get_daylight() {
         return 1 - 1 / (1 + powf(2, -t));
     }
 }
+
 
 // Note: depends on window size and frame buffer size
 // Arguments: none
@@ -83,6 +87,7 @@ int get_scale_factor() {
     return result;
 }
 
+
 // Arguments:
 // - rx: rotation x
 // - ry: rotation y
@@ -96,6 +101,7 @@ void get_sight_vector(float rx, float ry, float *vx, float *vy, float *vz) {
     *vy = sinf(ry);
     *vz = sinf(rx - RADIANS(90)) * m;
 }
+
 
 // Get the motion vector for a player's state
 // Arguments:
@@ -140,6 +146,7 @@ void get_motion_vector(int flying, int sz, int sx, float rx, float ry,
     }
 }
 
+
 // Generate the position buffer for the crosshairs in the middle of the screen.
 // Arguments: none
 // Returns:
@@ -155,6 +162,7 @@ GLuint gen_crosshair_buffer() {
     return gen_buffer(sizeof(data), data);
 }
 
+
 // Create a new cube wireframe buffer
 // Arguments:
 // - x: cube x position
@@ -169,6 +177,7 @@ GLuint gen_wireframe_buffer(float x, float y, float z, float n) {
     make_cube_wireframe(data, x, y, z, n);
     return gen_buffer(sizeof(data), data);
 }
+
 
 // Arguments:
 // - x: box center x position
@@ -188,6 +197,7 @@ GLuint gen_box_wireframe_buffer(
     return gen_buffer(sizeof(data), data);
 }
 
+
 // Create the sky buffer (sphere shape)
 // Arguments: none
 // Returns: OpenGL buffer handle
@@ -197,6 +207,7 @@ GLuint gen_sky_buffer() {
     make_sphere(data, 1, 3);
     return gen_buffer(sizeof(data), data);
 }
+
 
 // Create a new cube buffer
 // Arguments:
@@ -223,6 +234,7 @@ GLuint gen_cube_buffer(float x, float y, float z, float n, int w) {
     make_cube(data, ao, light, 1, 1, 1, 1, 1, 1, x, y, z, n, w);
     return gen_faces(10, 6, data);
 }
+
 
 // Generate a buffer for a plant block model at a given location
 // Arguments:
@@ -575,7 +587,7 @@ Chunk *find_chunk(int p, int q) {
             return chunk;
         }
     }
-    return 0;
+    return NULL;
 }
 
 // Get the "distance" of a chunk from the given chunk coordinates.
@@ -1312,11 +1324,16 @@ void map_set_func(int x, int y, int z, int w, void *arg) {
 void load_chunk(WorkerItem *item) {
     int p = item->p;
     int q = item->q;
+
     Map *block_map = item->block_maps[1][1];
-    Map *light_map = item->light_maps[1][1];
     create_world(p, q, map_set_func, block_map);
     db_load_blocks(block_map, p, q);
+
+    Map *light_map = item->light_maps[1][1];
     db_load_lights(light_map, p, q);
+
+    Map *dam_map = item->damage_maps[1][1];
+    db_load_damage(dam_map, p, q);
 }
 
 
@@ -1372,10 +1389,12 @@ void create_chunk(Chunk *chunk, int p, int q) {
     item->q = chunk->q;
     item->block_maps[1][1] = &chunk->map;
     item->light_maps[1][1] = &chunk->lights;
+    item->damage_maps[1][1] = &chunk->damage;
     load_chunk(item);
 
     request_chunk(p, q);
 }
+
 
 // Delete the chunks that should be deleted (because they are out of range)
 // Arguments: none
@@ -1403,6 +1422,7 @@ void delete_chunks() {
         if (delete) {
             map_free(&chunk->map);
             map_free(&chunk->lights);
+            map_free(&chunk->damage);
             sign_list_free(&chunk->signs);
             del_buffer(chunk->buffer);
             del_buffer(chunk->sign_buffer);
@@ -1413,6 +1433,7 @@ void delete_chunks() {
     g->chunk_count = count;
 }
 
+
 // Delete all chunk data
 // Arguments: none
 // Returns: none
@@ -1421,6 +1442,7 @@ void delete_all_chunks() {
         Chunk *chunk = g->chunks + i;
         map_free(&chunk->map);
         map_free(&chunk->lights);
+        map_free(&chunk->damage);
         sign_list_free(&chunk->signs);
         del_buffer(chunk->buffer);
         del_buffer(chunk->sign_buffer);
@@ -1440,11 +1462,17 @@ void check_workers() {
             if (chunk) {
                 if (item->load) {
                     Map *block_map = item->block_maps[1][1];
-                    Map *light_map = item->light_maps[1][1];
                     map_free(&chunk->map);
-                    map_free(&chunk->lights);
                     map_copy(&chunk->map, block_map);
+
+                    Map *light_map = item->light_maps[1][1];
+                    map_free(&chunk->lights);
                     map_copy(&chunk->lights, light_map);
+
+                    Map *dam_map = item->damage_maps[1][1];
+                    map_free(&chunk->damage);
+                    map_copy(&chunk->damage, dam_map);
+
                     request_chunk(item->p, item->q);
                 }
                 generate_chunk(chunk, item);
@@ -1452,14 +1480,21 @@ void check_workers() {
             for (int a = 0; a < 3; a++) {
                 for (int b = 0; b < 3; b++) {
                     Map *block_map = item->block_maps[a][b];
-                    Map *light_map = item->light_maps[a][b];
                     if (block_map) {
                         map_free(block_map);
                         free(block_map);
                     }
+
+                    Map *light_map = item->light_maps[a][b];
                     if (light_map) {
                         map_free(light_map);
                         free(light_map);
+                    }
+
+                    Map *dam_map = item->damage_maps[a][b];
+                    if (dam_map) {
+                        map_free(dam_map);
+                        free(dam_map);
                     }
                 }
             }
@@ -1572,14 +1607,20 @@ void ensure_chunks_worker(Player *player, Worker *worker) {
             if (other) {
                 Map *block_map = malloc(sizeof(Map));
                 map_copy(block_map, &other->map);
+                item->block_maps[dp + 1][dq + 1] = block_map;
+
                 Map *light_map = malloc(sizeof(Map));
                 map_copy(light_map, &other->lights);
-                item->block_maps[dp + 1][dq + 1] = block_map;
                 item->light_maps[dp + 1][dq + 1] = light_map;
+
+                Map *dam_map = malloc(sizeof(Map));
+                map_copy(dam_map, &other->damage);
+                item->damage_maps[dp + 1][dq + 1] = dam_map;
             }
             else {
                 item->block_maps[dp + 1][dq + 1] = 0;
                 item->light_maps[dp + 1][dq + 1] = 0;
+                item->damage_maps[dp + 1][dq + 1] = 0;
             }
         }
     }
@@ -1816,7 +1857,7 @@ void record_block(int x, int y, int z, int w) {
 }
 
 
-Chunk *find_chunk_xyz(int x, int y, int z) {
+Chunk *find_chunk_xyz(int x, int z) {
     int p = chunked(x);
     int q = chunked(z);
     return find_chunk(p, q);
@@ -1828,14 +1869,14 @@ Chunk *find_chunk_xyz(int x, int y, int z) {
 // Returns:
 // - w (block type value)
 int get_block(int x, int y, int z) {
-    Chunk *chunk = find_chunk_xyz(x, y, z);
+    Chunk *chunk = find_chunk_xyz(x, z);
     if (!chunk) { return 0; }
     return map_get(&chunk->map, x, y, z);
 }
 
 
 int get_block_damage(int x, int y, int z) {
-    Chunk *chunk = find_chunk_xyz(x, y, z);
+    Chunk *chunk = find_chunk_xyz(x, z);
     if (!chunk) { return 0; }
     return map_get(&chunk->damage, x, y, z);
 }
@@ -1844,7 +1885,7 @@ int get_block_damage(int x, int y, int z) {
 // Returns if something was found
 // w and damage are output
 int get_block_and_damage(int x, int y, int z, int *w, int *damage) {
-    Chunk *chunk = find_chunk_xyz(x, y, z);
+    Chunk *chunk = find_chunk_xyz(x, z);
     if (!chunk) { return 0; }
     if (w) { *w = map_get(&chunk->map, x, y, z); }
     if (damage) { *damage = map_get(&chunk->damage, x, y, z); }
@@ -1853,9 +1894,10 @@ int get_block_and_damage(int x, int y, int z, int *w, int *damage) {
 
 
 void set_block_damage(int x, int y, int z, int damage) {
-    Chunk *chunk = find_chunk_xyz(x, y, z);
+    Chunk *chunk = find_chunk_xyz(x, z);
     if (!chunk) { assert(0 && "no chunk!"); }
     map_set(&chunk->damage, x, y, z, damage);
+    db_insert_block_damage(chunk->p, chunk->q, x, y, z, damage);
 }
 
 
@@ -1883,9 +1925,7 @@ int add_block_damage_and_destroy(int x, int y, int z, int damage) {
 // - w
 // Returns: none
 void builder_block(int x, int y, int z, int w) {
-    if (y <= 0 || y >= 256) {
-        return;
-    }
+    if (y <= 0 || y >= 256) { return; }
     if (is_destructable(get_block(x, y, z))) {
         set_block(x, y, z, 0);
     }

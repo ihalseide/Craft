@@ -203,3 +203,16 @@ int ring_get(Ring *ring, RingEntry *entry) {
     return 1;
 }
 
+
+void ring_put_block_damage(Ring *ring, int p, int q, int x, int y, int z, int damage) {
+    RingEntry entry;
+    entry.type = BLOCK_DAMAGE;
+    entry.p = p;
+    entry.q = q;
+    entry.x = x;
+    entry.y = y;
+    entry.z = z;
+    entry.w = damage;
+    ring_put(ring, &entry);
+}
+

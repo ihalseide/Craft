@@ -174,7 +174,8 @@ int main(int argc, char **argv) {
         // DATABASE INITIALIZATION //
         if (g->mode == MODE_OFFLINE || USE_CACHE) {
             db_enable();
-            if (db_init(g->db_path)) {
+            int rc = db_init(g->db_path);
+            if (rc) {
                 // db initialization failed
                 return -1;
             }
@@ -210,8 +211,7 @@ int main(int argc, char **argv) {
         g->player_count = 1;
 
         // LOAD STATE FROM DATABASE //
-        int loaded = db_load_state(
-                &s->x, &s->y, &s->z, &s->rx, &s->ry, &s->flying);
+        int loaded = db_load_state(&s->x, &s->y, &s->z, &s->rx, &s->ry, &s->flying);
         s->brx = s->rx;
         force_chunks(me);
         if (!loaded) {

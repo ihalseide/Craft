@@ -6,7 +6,8 @@ typedef enum {
     LIGHT,
     KEY,
     COMMIT,
-    EXIT
+    EXIT,
+    BLOCK_DAMAGE,
 } RingEntryType;
 
 typedef struct {
@@ -40,5 +41,7 @@ void ring_put_key(Ring *ring, int p, int q, int key);
 void ring_put_commit(Ring *ring);
 void ring_put_exit(Ring *ring);
 int ring_get(Ring *ring, RingEntry *entry);
+void ring_put_block_damage(Ring *ring, int p, int q, int x, int y, int z, int damage);
+
 
 #endif
