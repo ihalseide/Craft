@@ -2640,7 +2640,6 @@ int break_block(void)
     int hw = hit_test(0, s->x, s->y, s->z, s->rx, s->ry, &hx, &hy, &hz);
     if (hy > 0 && hy < 256 && is_destructable(hw)) {
         int player_attack_damage = g->players[0].attack_damage;
-        printf("did %d damage\n", player_attack_damage);
         if (!add_block_damage_and_destroy(hx, hy, hz, player_attack_damage)) { return 0; }
         //set_block(hx, hy, hz, 0);
         record_block(hx, hy, hz, 0);
