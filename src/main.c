@@ -209,6 +209,7 @@ int main(int argc, char **argv) {
         me->buffer = 0;
         me->attack_damage = 1;
         g->player_count = 1;
+        //printf("player damage is %d\n", me->attack_damage);
 
         // LOAD STATE FROM DATABASE //
         int loaded = db_load_state(&s->x, &s->y, &s->z, &s->rx, &s->ry, &s->flying);

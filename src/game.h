@@ -404,6 +404,7 @@ int box_intersect_world(
 int is_block_face_covered(int x, int y, int z, float nx, float ny, float nz);
 int get_block_and_damage(int x, int y, int z, int *w, int *damage);
 int get_block_damage(int x, int y, int z);
+int add_block_damage(int x, int y, int z, int damage);
 
 #endif /*_game_h_*/
 

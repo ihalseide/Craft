@@ -463,11 +463,8 @@ void db_insert_light(int p, int q, int x, int y, int z, int w) {
 
 // Actually insert a light into the database.
 // Arguments:
-// - p: chunk x position
-// - q: chunk z position
-// - x: block x position
-// - y: block y position
-// - z: block z position
+// - p, q: chunk x, z position
+// - x, y, z: light block position
 // - w: light value
 void _db_insert_light(int p, int q, int x, int y, int z, int w) {
     sqlite3_reset(insert_light_stmt);
@@ -483,11 +480,8 @@ void _db_insert_light(int p, int q, int x, int y, int z, int w) {
 
 // Insert a sign on the given block and face from the database
 // Arguments:
-// - p: chunk x position
-// - q: chunk z position
-// - x: block x position
-// - y: block y position
-// - z: block z position
+// - p, q: chunk x, z position
+// - x, y, z: light block position
 // - face: which face of the block the sign is to be on
 // - text: the sign's text content
 void db_insert_sign(
@@ -508,9 +502,7 @@ void db_insert_sign(
 
 // Delete a sign on the given block and face from the database
 // Arguments:
-// - x: block x position
-// - y: block y position
-// - z: block z position
+// - x, y, z: light block position
 // - face: which face of the block the sign to delete is on
 void db_delete_sign(int x, int y, int z, int face) {
     if (!db_enabled) { return; }
@@ -525,9 +517,7 @@ void db_delete_sign(int x, int y, int z, int face) {
 
 // Delete signs on given block from the database
 // Arguments:
-// - x: block x position
-// - y: block y position
-// - z: block z position
+// - x, y, z: block position
 void db_delete_signs(int x, int y, int z) {
     if (!db_enabled) { return; }
     sqlite3_reset(delete_signs_stmt);
@@ -539,8 +529,6 @@ void db_delete_signs(int x, int y, int z) {
 
 
 // Delete all signs from the database
-// Arguments: none
-// Returns: none
 void db_delete_all_signs() {
     if (!db_enabled) { return; }
     sqlite3_exec(db, "delete from sign;", NULL, NULL, NULL);
@@ -550,8 +538,7 @@ void db_delete_all_signs() {
 // Load all of the blocks from database in chunk
 // Arguments:
 // - map: block map destination to load block values into
-// - p: chunk x position
-// - q: chunk z position
+// - p, q: chunk x, z position
 // Returns: none
 void db_load_blocks(Map *map, int p, int q) {
     if (!db_enabled) { return; }
@@ -734,6 +721,8 @@ int db_worker_run(void *arg) {
         switch (e.type) {
             case BLOCK:
                 _db_insert_block(e.p, e.q, e.x, e.y, e.z, e.w);
+                // Reset block damage
+                _db_insert_block_damage(e.p, e.q, e.x, e.y, e.z, 0);
                 break;
             case LIGHT:
                 _db_insert_light(e.p, e.q, e.x, e.y, e.z, e.w);

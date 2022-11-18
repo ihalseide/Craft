@@ -1882,8 +1882,8 @@ int get_block_damage(int x, int y, int z) {
 }
 
 
-// Returns if something was found
-// w and damage are output
+// Returns whether a block was found
+// Output: 'w' and 'damage'
 int get_block_and_damage(int x, int y, int z, int *w, int *damage) {
     Chunk *chunk = find_chunk_xyz(x, z);
     if (!chunk) { return 0; }
@@ -1902,21 +1902,14 @@ void set_block_damage(int x, int y, int z, int damage) {
 
 
 // Add damage to a block and destroy it if it exceeds the damage limit.
-// Returns non-zero if the block was destroyed
-int add_block_damage_and_destroy(int x, int y, int z, int damage) {
+// Returns non-zero if the block should destroyed
+int add_block_damage(int x, int y, int z, int damage) {
     int w, initial_damage;
     if (!get_block_and_damage(x, y, z, &w, &initial_damage)) { return 0; }
     if (damage < block_get_min_damage_threshold(w)) { return 0; }
     int new_damage = initial_damage + damage;
-    if (new_damage >= block_get_max_damage(w)) {
-        // It is enough to break the block
-        set_block(x, y, z, 0);
-        return 1;
-    } else {
-        // Add and save the block's damage
-        set_block_damage(x, y, z, new_damage);
-    }
-    return 0;
+    set_block_damage(x, y, z, new_damage);
+    return new_damage >= block_get_max_damage(w);
 }
 
 
@@ -2672,35 +2665,42 @@ int place_block(void)
     return 0;
 }
 
+
 // Try to break a block where the player is looking and return success
 int break_block(void)
 {
     State *s = &(g->players[0].state);
     int hx, hy, hz;
     int hw = hit_test(0, s->x, s->y, s->z, s->rx, s->ry, &hx, &hy, &hz);
-    if (hy > 0 && hy < 256 && is_destructable(hw)) {
-        int player_attack_damage = g->players[0].attack_damage;
-        if (!add_block_damage_and_destroy(hx, hy, hz, player_attack_damage)) { return 0; }
-        //set_block(hx, hy, hz, 0);
-        record_block(hx, hy, hz, 0);
-        if (is_plant(get_block(hx, hy + 1, hz))) {
-            set_block(hx, hy + 1, hz, 0);
-        }
-        return 1;
+
+    // Only break blocks that are in bounds and are destructable
+    if (!(hy > 0 && hy < 256 && is_destructable(hw))) {
+        return 0;
     }
-    return 0;
+
+    int player_attack_damage = g->players[0].attack_damage;
+    //printf("doing %d damage\n", player_attack_damage);
+    if (!add_block_damage(hx, hy, hz, player_attack_damage)) { return 0; }
+
+    set_block(hx, hy, hz, 0);
+    record_block(hx, hy, hz, 0);
+    if (is_plant(get_block(hx, hy + 1, hz))) {
+        set_block(hx, hy + 1, hz, 0);
+    }
+    return 1;
 }
 
-// Destroy block on left click, has a cool-down
+
+// Destroy block on left click, which also has a cool-down time
 void on_left_click() {
     State *s = &g->players->state;
     float t = glfwGetTime();
-    if (t - s->dblockt > g->physics.dblockcool)
-    {
+    if (t - s->dblockt > g->physics.dblockcool) {
         s->dblockt = t;
         break_block();
     }
 }
+
 
 // Place block on left click, has a cool-down
 void on_right_click() {
@@ -2716,6 +2716,7 @@ void on_right_click() {
     }
 }
 
+
 // Arguments: none
 // Returns: none
 void on_middle_click() {
@@ -2729,6 +2730,7 @@ void on_middle_click() {
         }
     }
 }
+
 
 // Handle key press callback
 // Arguments:
@@ -2838,6 +2840,7 @@ void on_key(GLFWwindow *window, int key, int scancode, int action, int mods) {
         }
     }
 }
+
 
 // Handle character callback
 // Arguments:
