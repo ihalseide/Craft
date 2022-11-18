@@ -1,18 +1,18 @@
-#include <GL/glew.h>
-#include <GLFW/glfw3.h>
-#include <curl/curl.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <time.h>
-#include "tinycthread.h"
 #include "auth.h"
 #include "client.h"
 #include "config.h"
 #include "db.h"
 #include "game.h"
-#include "util.h"
 #include "player.h"
+#include "tinycthread.h"
+#include "util.h"
+#include <GL/glew.h>
+#include <GLFW/glfw3.h>
+#include <curl/curl.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
 
 extern Model *g;
 

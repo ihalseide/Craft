@@ -3314,13 +3314,13 @@ void reset_model() {
     // Default physics
     memset(&g->physics, 0, sizeof(g->physics));
     g->physics.flyr = 3.0;
-    g->physics.airhr = 3.4;
+    g->physics.airhr = 7.4;
     g->physics.airvr = 0.1;
-    g->physics.groundr = 4.1;
-    g->physics.flysp = 100.0;
-    g->physics.walksp = 50.0;
+    g->physics.groundr = 8.1;
+    g->physics.flysp = 90.0;
+    g->physics.walksp = 80.0;
     g->physics.grav = 60.0;
-    g->physics.jumpaccel = 900.0;
+    g->physics.jumpaccel = 800.0;
     g->physics.jumpcool = 0.31;
     g->physics.blockcool = 0.1;   // max 10 times per second
     g->physics.dblockcool = 0.05; // max 20 times per second
