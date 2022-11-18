@@ -754,7 +754,6 @@ int db_worker_run(void *arg) {
         switch (e.type) {
             case BLOCK:
                 _db_insert_block(e.p, e.q, e.x, e.y, e.z, e.w);
-                // Reset block damage
                 _db_insert_block_damage(e.p, e.q, e.x, e.y, e.z, 0);
                 break;
             case LIGHT:

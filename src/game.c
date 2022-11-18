@@ -400,7 +400,6 @@ void draw_lines(Attrib *attrib, GLuint buffer, int components, int count) {
 // Arguments:
 // Returns: none
 void draw_chunk(Attrib *attrib, Chunk *chunk) {
-    int offset = 0;
     draw_triangles_3d_ao(attrib, chunk->buffer, chunk->faces * 6);
 }
 
@@ -452,7 +451,6 @@ void draw_cube(Attrib *attrib, GLuint buffer) {
 // Arguments:
 // Returns: none
 void draw_plant(Attrib *attrib, GLuint buffer) {
-    int offset = 0;
     draw_item(attrib, buffer, 24);
 }
 
@@ -916,7 +914,7 @@ void gen_sign_buffer(Chunk *chunk) {
 
     // first pass - count characters
     int max_faces = 0;
-    for (int i = 0; i < signs->size; i++) {
+    for (unsigned i = 0; i < signs->size; i++) {
         Sign *e = signs->data + i;
         max_faces += strlen(e->text);
     }
@@ -924,7 +922,7 @@ void gen_sign_buffer(Chunk *chunk) {
     // second pass - generate geometry
     GLfloat *data = malloc_faces(5, max_faces);
     int faces = 0;
-    for (int i = 0; i < signs->size; i++) {
+    for (unsigned i = 0; i < signs->size; i++) {
         Sign *e = signs->data + i;
         faces += _gen_sign_buffer(
             data + faces * 30, e->x, e->y, e->z, e->face, e->text);
@@ -2502,16 +2500,14 @@ void parse_command(const char *buffer, int forward) {
     int server_port = DEFAULT_PORT;
     char filename[MAX_PATH_LENGTH];
     int radius, count, xc, yc, zc;
-    if (strcmp(buffer, "/ghost") == 0)
-    {
+    if (strcmp(buffer, "/ghost") == 0) {
         // spawn ghost
         Player *me = &g->players[0];
         delete_ghost(me);
         create_ghost(me);
         add_message("Added ghost");
     }
-    else if (strcmp(buffer, "/noghost") == 0)
-    {
+    else if (strcmp(buffer, "/noghost") == 0) {
         // remove ghost
         Player *me = &g->players[0];
         delete_ghost(me);
@@ -2740,7 +2736,7 @@ void on_middle_click() {
 // - action
 // - mods
 // Returns: none
-void on_key(GLFWwindow *window, int key, int scancode, int action, int mods) {
+void on_key(GLFWwindow *window, int key, int /*scancode*/, int action, int mods) {
     int control = mods & (GLFW_MOD_CONTROL | GLFW_MOD_SUPER);
     int exclusive =
         glfwGetInputMode(window, GLFW_CURSOR) == GLFW_CURSOR_DISABLED;
@@ -2847,7 +2843,7 @@ void on_key(GLFWwindow *window, int key, int scancode, int action, int mods) {
 // - window
 // - u
 // Returns: none
-void on_char(GLFWwindow *window, unsigned int u) {
+void on_char(GLFWwindow * /*window*/, unsigned int u) {
     if (g->suppress_char) {
         g->suppress_char = 0;
         return;
@@ -2886,7 +2882,7 @@ void on_char(GLFWwindow *window, unsigned int u) {
 // - xdelta: scroll x change since last time
 // - ydelta: scroll y change since last time
 // Returns: none
-void on_scroll(GLFWwindow *window, double xdelta, double ydelta) {
+void on_scroll(GLFWwindow * /*window*/, double /*xdelta*/, double ydelta) {
     static double ypos = 0;
     ypos += ydelta;
     if (ypos < -SCROLL_THRESHOLD) {
