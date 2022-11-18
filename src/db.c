@@ -253,7 +253,7 @@ void db_commit() {
 // Actually do a database commit.
 // Arguments: none
 // Returns: none
-void _db_commit() {
+static void _db_commit() {
     sqlite3_exec(db, "commit; begin;", NULL, NULL, NULL);
 }
 
@@ -424,7 +424,7 @@ void db_insert_block(int p, int q, int x, int y, int z, int w) {
 // - y: block y position
 // - z: block z position
 // - w: block id value
-void _db_insert_block(int p, int q, int x, int y, int z, int w) {
+static void _db_insert_block(int p, int q, int x, int y, int z, int w) {
     sqlite3_reset(insert_block_stmt);
     sqlite3_bind_int(insert_block_stmt, 1, p);
     sqlite3_bind_int(insert_block_stmt, 2, q);
@@ -446,7 +446,7 @@ void db_insert_block_damage(int p, int q, int x, int y, int z, int damage) {
 
 
 // Actually insert a block damage value into the database
-void _db_insert_block_damage(int p, int q, int x, int y, int z, int w) {
+static void _db_insert_block_damage(int p, int q, int x, int y, int z, int w) {
     sqlite3_reset(insert_block_damage_stmt);
     sqlite3_bind_int(insert_block_damage_stmt, 1, p);
     sqlite3_bind_int(insert_block_damage_stmt, 2, q);
@@ -468,7 +468,7 @@ void db_trim_block_damage(int p, int q) {
 
 
 // Remove all damage records that just set damage to zero
-void _db_block_damage_trim(int p, int q) {
+static void _db_block_damage_trim(int p, int q) {
     sqlite3_reset(trim_block_damage_stmt);
     sqlite3_bind_int(trim_block_damage_stmt, 1, p);
     sqlite3_bind_int(trim_block_damage_stmt, 2, q);
@@ -498,7 +498,7 @@ void db_insert_light(int p, int q, int x, int y, int z, int w) {
 // - p, q: chunk x, z position
 // - x, y, z: light block position
 // - w: light value
-void _db_insert_light(int p, int q, int x, int y, int z, int w) {
+static void _db_insert_light(int p, int q, int x, int y, int z, int w) {
     sqlite3_reset(insert_light_stmt);
     sqlite3_bind_int(insert_light_stmt, 1, p);
     sqlite3_bind_int(insert_light_stmt, 2, q);
@@ -699,7 +699,7 @@ void db_set_key(int p, int q, int key) {
 // - q: chunk z position
 // - key: ket to be set for the chunk
 // Returns: none
-void _db_set_key(int p, int q, int key) {
+static void _db_set_key(int p, int q, int key) {
     sqlite3_reset(set_key_stmt);
     sqlite3_bind_int(set_key_stmt, 1, p);
     sqlite3_bind_int(set_key_stmt, 2, q);
