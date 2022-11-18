@@ -2629,6 +2629,12 @@ void parse_command(const char *buffer, int forward) {
         // Place an unfilled cylinder with a radius
         cylinder(&g->block0, &g->block1, radius, 0);
     }
+    else if (sscanf(buffer, "/damage %d", &radius) == 1) {
+        char out[30];
+        snprintf(out, sizeof(out), "set attack_damage=%d", radius);
+        add_message(out);
+        g->players[0].attack_damage = radius;
+    }
     else if (forward) {
         // If no command was found, maybe send it as a chat message
         client_talk(buffer);
