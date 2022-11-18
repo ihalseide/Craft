@@ -188,9 +188,7 @@ GLuint gen_wireframe_buffer(float x, float y, float z, float n) {
 // - ez: box z extent
 // Returns:
 // - OpenGL buffer handle
-GLuint gen_box_wireframe_buffer(
-        float x, float y, float z, float ex, float ey, float ez)
-{
+GLuint gen_box_wireframe_buffer(float x, float y, float z, float ex, float ey, float ez) {
     // (6 faces)*(4 points)*(3 dimensions) = 72 floats
     float data[72];
     make_box_wireframe(data, x, y, z, ex, ey, ez);
@@ -1333,6 +1331,7 @@ void load_chunk(WorkerItem *item) {
     db_load_lights(light_map, p, q);
 
     Map *dam_map = item->damage_maps[1][1];
+    db_trim_block_damage(p, q);
     db_load_damage(dam_map, p, q);
 }
 

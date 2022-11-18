@@ -216,3 +216,12 @@ void ring_put_block_damage(Ring *ring, int p, int q, int x, int y, int z, int da
     ring_put(ring, &entry);
 }
 
+
+void ring_put_block_damage_trim(Ring *ring, int p, int q) {
+    RingEntry entry;
+    entry.type = BLOCK_DAMAGE_TRIM;
+    entry.p = p;
+    entry.q = q;
+    ring_put(ring, &entry);
+}
+

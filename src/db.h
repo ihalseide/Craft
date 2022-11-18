@@ -4,6 +4,7 @@
 #include "map.h"
 #include "sign.h"
 
+
 int db_auth_get(char *username, char *identity_token, int identity_token_length);
 int db_auth_get_selected(char *username, int username_length, char *identity_token, int identity_token_length);
 int db_auth_select(char *username);
@@ -31,7 +32,9 @@ void db_load_lights(Map *map, int p, int q);
 void db_load_signs(SignList *list, int p, int q);
 void db_save_state(float x, float y, float z, float rx, float ry, int flying);
 void db_set_key(int p, int q, int key);
+void db_trim_block_damage(int p, int q);
 void db_worker_start();
 void db_worker_stop();
+
 
 #endif

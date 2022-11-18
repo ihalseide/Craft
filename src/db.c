@@ -22,6 +22,7 @@ static sqlite3_stmt *get_key_stmt;
 static sqlite3_stmt *set_key_stmt;
 static sqlite3_stmt *load_block_damage_stmt;
 static sqlite3_stmt *insert_block_damage_stmt;
+static sqlite3_stmt *trim_block_damage_stmt;
 
 static Ring ring;
 static thrd_t thrd;
@@ -157,6 +158,8 @@ int db_init(char *path) {
     static const char *insert_block_damage_query =
         "insert or replace into block_damage (p, q, x, y, z, w) "
         "values (?, ?, ?, ?, ?, ?);";
+    static const char *trim_block_damage_query =
+        "delete from block_damage where w=0 and p=? and q=?;";
 
     int rc;
 
@@ -202,6 +205,9 @@ int db_init(char *path) {
     rc = sqlite3_prepare_v2(db, insert_block_damage_query, -1, &insert_block_damage_stmt, NULL);
     if (rc) { return bail(rc); }
 
+    rc = sqlite3_prepare_v2(db, trim_block_damage_query, -1, &trim_block_damage_stmt, NULL);
+    if (rc) { return bail(rc); }
+
     sqlite3_exec(db, "begin;", NULL, NULL, NULL);
     db_worker_start();
     return 0;
@@ -227,8 +233,10 @@ void db_close() {
     sqlite3_finalize(set_key_stmt);
     sqlite3_finalize(insert_block_damage_stmt);
     sqlite3_finalize(load_block_damage_stmt);
+    sqlite3_finalize(trim_block_damage_stmt);
     sqlite3_close(db);
 }
+
 
 // Let one of the workers do the database commit.
 // Arguments: none
@@ -241,12 +249,14 @@ void db_commit() {
     mtx_unlock(&mtx);
 }
 
+
 // Actually do a database commit.
 // Arguments: none
 // Returns: none
 void _db_commit() {
     sqlite3_exec(db, "commit; begin;", NULL, NULL, NULL);
 }
+
 
 void db_auth_set(char *username, char *identity_token) {
     if (!db_enabled) { return; }
@@ -263,6 +273,7 @@ void db_auth_set(char *username, char *identity_token) {
     db_auth_select(username);
 }
 
+
 int db_auth_select(char *username) {
     if (!db_enabled) { return 0; }
     db_auth_select_none();
@@ -276,11 +287,13 @@ int db_auth_select(char *username) {
     return sqlite3_changes(db);
 }
 
+
 void db_auth_select_none() {
     if (!db_enabled) { return; }
     sqlite3_exec(db, "update auth.identity_token set selected = 0;",
         NULL, NULL, NULL);
 }
+
 
 int db_auth_get(
     char *username,
@@ -303,6 +316,7 @@ int db_auth_get(
     sqlite3_finalize(stmt);
     return result;
 }
+
 
 int db_auth_get_selected(
     char *username, int username_length,
@@ -444,6 +458,24 @@ void _db_insert_block_damage(int p, int q, int x, int y, int z, int w) {
 }
 
 
+void db_trim_block_damage(int p, int q) {
+    if (!db_enabled) { return; }
+    mtx_lock(&mtx);
+    ring_put_block_damage_trim(&ring, p, q);
+    cnd_signal(&cnd);
+    mtx_unlock(&mtx);
+}
+
+
+// Remove all damage records that just set damage to zero
+void _db_block_damage_trim(int p, int q) {
+    sqlite3_reset(trim_block_damage_stmt);
+    sqlite3_bind_int(trim_block_damage_stmt, 1, p);
+    sqlite3_bind_int(trim_block_damage_stmt, 2, q);
+    sqlite3_step(trim_block_damage_stmt);
+}
+
+
 // Let one of the workers insert a light into the database.
 // Arguments:
 // - p: chunk x position
@@ -574,6 +606,7 @@ void db_load_damage(Map *map, int p, int q) {
         int y = sqlite3_column_int(load_block_damage_stmt, 1);
         int z = sqlite3_column_int(load_block_damage_stmt, 2);
         int d = sqlite3_column_int(load_block_damage_stmt, 3);
+        if (!d) { continue; }
         map_set(map, x, y, z, d);
     }
     mtx_unlock(&load_mtx);
@@ -738,6 +771,9 @@ int db_worker_run(void *arg) {
                 break;
             case BLOCK_DAMAGE:
                 _db_insert_block_damage(e.p, e.q, e.x, e.y, e.z, e.w);
+                break;
+            case BLOCK_DAMAGE_TRIM:
+                _db_block_damage_trim(e.p, e.q);
                 break;
         }
     }
