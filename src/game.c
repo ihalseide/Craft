@@ -1960,9 +1960,7 @@ int render_chunks(Attrib *attrib, Player *player) {
         if (chunk_distance(chunk, p, q) > g->render_radius) {
             continue;
         }
-        if (!chunk_visible(
-            planes, chunk->p, chunk->q, chunk->miny, chunk->maxy))
-        {
+        if (!chunk_visible(planes, chunk->p, chunk->q, chunk->miny, chunk->maxy)) {
             continue;
         }
         draw_chunk(attrib, chunk);
@@ -2706,12 +2704,9 @@ void on_left_click() {
 void on_right_click() {
     State *s = &g->players->state;
     float t = glfwGetTime();
-    if (t - s->blockt > g->physics.blockcool)
-    {
-        if (place_block())
-        {
+    if (t - s->blockt > g->physics.blockcool) {
+        if (place_block()) {
             s->blockt = t;
-            //s->autot = t;
         }
     }
 }
@@ -3038,8 +3033,7 @@ void handle_movement(double dt) {
         // Handle jump or fly up
         if (glfwGetKey(g->window, CRAFT_KEY_JUMP)) {
             float t = glfwGetTime();
-            if (s->flying)
-            {
+            if (s->flying) {
                 ay = g->physics.flysp;
             }
             else if (s->is_grounded && (t - s->jumpt > g->physics.jumpcool)) {
@@ -3050,8 +3044,7 @@ void handle_movement(double dt) {
         }
         // Handle fly down
         if (glfwGetKey(g->window, CRAFT_KEY_CROUCH)) {
-            if (s->flying)
-            {
+            if (s->flying) {
                 ay = -g->physics.flysp;
             }
         }
@@ -3111,16 +3104,14 @@ void handle_movement(double dt) {
     // Reset this flag because collision will set it if necessary.
     s->is_grounded = 0;
     // There is no collision this frame if "t == 1.0".
-    if (0.0 <= t && t < 1.0)
-    {
+    if (0.0 <= t && t < 1.0) {
         // There was a collision
         // Do multiple collision steps per frame
         const int steps = 4;
         const float ut = dt / steps;
         const float oppose = 1.2 * ut;
         const float pad = 0.001;
-        for (int i = 0; i < steps; i++)
-        {
+        for (int i = 0; i < steps; i++) {
             t = box_sweep_world(
                     bx, by, bz, ex, ey, ez, s->vx * ut, s->vy * ut, s->vz * ut,
                     &nx, &ny, &nz);
@@ -3132,25 +3123,21 @@ void handle_movement(double dt) {
             // next to a block edge
             // Respond to the collision normal by opposing velocity in that
             // direction.
-            if (nx != 0.0)
-            {
+            if (nx != 0.0) {
                 // In x direction
                 bx += nx * pad;
                 s->vx = nx * oppose;
             }
-            else if (ny != 0.0)
-            {
+            else if (ny != 0.0) {
                 // In y direction
                 by += ny * pad;
                 s->vy = ny * oppose;
                 // Detect hitting a floor
-                if (ny > 0)
-                {
+                if (ny > 0) {
                     s->is_grounded = 1;
                 }
             }
-            else if (nz != 0.0)
-            {
+            else if (nz != 0.0) {
                 // In z direction
                 bz += nz * pad;
                 s->vz = nz * oppose;
@@ -3159,8 +3146,7 @@ void handle_movement(double dt) {
         // Update player position
         player_pos_inv(bx, by, bz, &s->x, &s->y, &s->z);
     }
-    else
-    {
+    else {
         // There was no collision
         // Add full velocity to position
         s->x += s->vx * dt;
@@ -3208,8 +3194,7 @@ void parse_buffer(char *buffer) {
         float ux, uy, uz, urx, ury;
         // Set this client's player position
         if (sscanf(line, "U,%d,%f,%f,%f,%f,%f",
-            &pid, &ux, &uy, &uz, &urx, &ury) == 6)
-        {
+            &pid, &ux, &uy, &uz, &urx, &ury) == 6) {
             me->id = pid;
             s->x = ux; s->y = uy; s->z = uz; s->rx = urx; s->ry = ury;
             force_chunks(me);
@@ -3220,12 +3205,9 @@ void parse_buffer(char *buffer) {
         // Block update
         int bp, bq, bx, by, bz, bw;
         if (sscanf(line, "B,%d,%d,%d,%d,%d,%d",
-            &bp, &bq, &bx, &by, &bz, &bw) == 6)
-        {
+            &bp, &bq, &bx, &by, &bz, &bw) == 6) {
             _set_block(bp, bq, bx, by, bz, bw, 0);
-            if (player_intersects_block(
-                        s->x, s->y, s->z, s->vx, s->vy, s->vz, bx, by, bz)) 
-            {
+            if (player_intersects_block(s->x, s->y, s->z, s->vx, s->vy, s->vz, bx, by, bz)) {
                 s->y = highest_block(s->x, s->z) + 2;
             }
         }
@@ -3299,9 +3281,7 @@ void parse_buffer(char *buffer) {
             "S,%%d,%%d,%%d,%%d,%%d,%%d,%%%d[^\n]", MAX_SIGN_LENGTH - 1);
         int face;
         char text[MAX_SIGN_LENGTH] = {0};
-        if (sscanf(line, format,
-            &bp, &bq, &bx, &by, &bz, &face, text) >= 6)
-        {
+        if (sscanf(line, format, &bp, &bq, &bx, &by, &bz, &face, text) >= 6) {
             _set_sign(bp, bq, bx, by, bz, face, text, 0);
         }
         // Get next line
@@ -3367,8 +3347,7 @@ void create_ghost(Player *p) {
 
 // DEBUG
 void delete_ghost(Player *p) {
-    if (p)
-    {
+    if (p) {
         delete_player(ghost_id(p->id));
     }
 }
@@ -3416,8 +3395,7 @@ int box_intersect_world(
                     + powf(y - by, 2) 
                     + powf(z - bz, 2);
                 // Check by distance
-                if (sdsq < dsq)
-                {
+                if (sdsq < dsq) {
                     dsq = sdsq;
                     *cx = bx;
                     *cy = by;
@@ -3451,8 +3429,7 @@ float box_sweep_world(
     *nx = *ny = *nz = 0;
     float t = 1.0;
     // No velocity -> no collision
-    if (vx == 0 && vy == 0 && vz == 0)
-    {
+    if (vx == 0 && vy == 0 && vz == 0) {
         return t;
     }
     float bbx, bby, bbz, bbex, bbey, bbez;
@@ -3473,20 +3450,16 @@ float box_sweep_world(
         for (int by = y0; by <= y1; by++) {
             for (int bz = z0; bz <= z1; bz++) {
                 // Skip the current block
-                if (bx == cx && by == cy && bz == cz)
-                {
+                if (bx == cx && by == cy && bz == cz) {
                     continue;
                 }
                 // Only collide with obstacle blocks
                 int w = get_block(bx, by, bz);
-                if (!is_obstacle(w)) 
-                {
+                if (!is_obstacle(w)) {
                     continue;
                 }
                 // Box must intersect the broad-phase bounding box
-                if (!box_intersect_block(
-                            bbx, bby, bbz, bbex, bbey, bbez, bx, by, bz))
-                {
+                if (!box_intersect_block(bbx, bby, bbz, bbex, bbey, bbez, bx, by, bz)) {
                     continue;
                 }
                 // Check potential swept block collision
@@ -3494,8 +3467,7 @@ float box_sweep_world(
                 float st = box_sweep_block(
                         x, y, z, ex, ey, ez, bx, by, bz, vx, vy, vz,
                         &snx, &sny, &snz);
-                if (st < 0.0 || st >= 1.0) 
-                {
+                if (st < 0.0 || st >= 1.0) {
                     // No collision for this frame
                     continue;
                 }
@@ -3506,8 +3478,7 @@ float box_sweep_world(
                 {
                     continue;
                 }
-                if (st >= 0 && st < t)
-                {
+                if (st >= 0 && st < t) {
                     //dsq = sdsq;
                     t = st;
                     *nx = snx;
