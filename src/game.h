@@ -34,6 +34,7 @@
 #define WORKER_BUSY 1
 #define WORKER_DONE 2
 
+
 // Physiscs settings
 // - grav: gravity
 // - walksp: walking speed (horizontal)
@@ -47,6 +48,7 @@
 // - blockcool: cool-down time between placing blocks by any means
 // - dblockcool: cool-down time between destroying blocks by any means
 //   down the button
+// - min_impulse_damage: minimum velocity change required to take damage
 typedef struct {
     float grav;
     float walksp;
@@ -59,7 +61,11 @@ typedef struct {
     float jumpcool;
     float blockcool;
     float dblockcool;
+    float min_impulse_damage;
+    float impulse_damage_min;
+    float impulse_damage_scale;
 } PhysicsConfig;
+
 
 // World chunk data (big area of blocks)
 // - map: block hash map
@@ -90,6 +96,7 @@ typedef struct {
     GLuint sign_buffer;
 } Chunk;
 
+
 // A single item that a Worker can work on
 // - p: chunk x coordinate
 // - q: chunk y coordinate
@@ -113,6 +120,7 @@ typedef struct {
     GLfloat *data;
 } WorkerItem;
 
+
 // Worker data (for multi-threading)
 // - index:
 // - state:
@@ -129,6 +137,7 @@ typedef struct {
     WorkerItem item;
 } Worker;
 
+
 // Block data
 // - x: x position
 // - y: y position
@@ -140,6 +149,7 @@ typedef struct {
     int z;
     int w;
 } Block;
+
 
 // OpenGL attribute data
 // - program:
@@ -169,6 +179,7 @@ typedef struct {
     GLuint extra4;
 } Attrib;
 
+
 // - active: flag for whether the box is active
 // - x: box center x
 // - y: box center y
@@ -188,6 +199,7 @@ typedef struct
     float ez;
     GLuint buffer;
 } DebugBox;
+
 
 // Program state model
 // - window:
@@ -263,8 +275,10 @@ typedef struct {
     PhysicsConfig physics;
 } Model;
 
+
 // Game model pointer
 extern Model *g;
+
 
 int chunked(float x);
 float time_of_day();
@@ -405,6 +419,8 @@ int is_block_face_covered(int x, int y, int z, float nx, float ny, float nz);
 int get_block_and_damage(int x, int y, int z, int *w, int *damage);
 int get_block_damage(int x, int y, int z);
 int add_block_damage(int x, int y, int z, int damage);
+float calc_damage_from_impulse(float d_vel);
+
 
 #endif /*_game_h_*/
 

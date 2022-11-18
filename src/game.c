@@ -515,11 +515,7 @@ void delete_all_players() {
 float player_player_distance(Player *p1, Player *p2) {
     State *s1 = &p1->state;
     State *s2 = &p2->state;
-    // Calculate magnitude of the vector from p2 position to p1 position
-    float x = s2->x - s1->x;
-    float y = s2->y - s1->y;
-    float z = s2->z - s1->z;
-    return sqrtf(x * x + y * y + z * z);
+    return v3_mag(s2->x - s1->x, s2->y - s1->y, s2->z - s1->z);
 }
 
 // Get the distance between where p1 is looking and p2's position.
@@ -2193,8 +2189,7 @@ void render_item(Attrib *attrib) {
 // - n
 // - text
 // Returns: none
-void render_text(
-    Attrib *attrib, int justify, float x, float y, float n, char *text)
+void render_text(Attrib *attrib, int justify, float x, float y, float n, char *text)
 {
     float matrix[16];
     set_matrix_2d(matrix, g->width, g->height);
@@ -2629,7 +2624,7 @@ void parse_command(const char *buffer, int forward) {
         char out[30];
         snprintf(out, sizeof(out), "set attack_damage=%d", radius);
         add_message(out);
-        g->players[0].attack_damage = radius;
+        g->players[0].attrs.attack_damage = radius;
     }
     else if (forward) {
         // If no command was found, maybe send it as a chat message
@@ -2677,9 +2672,9 @@ int break_block(void)
         return 0;
     }
 
-    int player_attack_damage = g->players[0].attack_damage;
-    //printf("doing %d damage\n", player_attack_damage);
-    if (!add_block_damage(hx, hy, hz, player_attack_damage)) { return 0; }
+    int damage = g->players[0].attrs.attack_damage;
+    //printf("doing %d damage\n", damage);
+    if (!add_block_damage(hx, hy, hz, damage)) { return 0; }
 
     set_block(hx, hy, hz, 0);
     record_block(hx, hy, hz, 0);
@@ -2692,10 +2687,9 @@ int break_block(void)
 
 // Destroy block on left click, which also has a cool-down time
 void on_left_click() {
-    State *s = &g->players->state;
     float t = glfwGetTime();
-    if (t - s->dblockt > g->physics.dblockcool) {
-        s->dblockt = t;
+    if (t - g->players[0].attrs.dblockt > g->physics.dblockcool) {
+        g->players[0].attrs.dblockt = t;
         break_block();
     }
 }
@@ -2703,7 +2697,7 @@ void on_left_click() {
 
 // Place block on left click, has a cool-down
 void on_right_click() {
-    State *s = &g->players->state;
+    PlayerAttributes *s = &g->players->attrs;
     float t = glfwGetTime();
     if (t - s->blockt > g->physics.blockcool) {
         if (place_block()) {
@@ -2810,7 +2804,7 @@ void on_key(GLFWwindow *window, int key, int /*scancode*/, int action, int mods)
     }
     if (!g->typing) {
         if (key == CRAFT_KEY_FLY) {
-            State *s = &g->players->state;
+            PlayerAttributes *s = &g->players[0].attrs;
             s->flying = !s->flying;
         }
         if (key >= '1' && key <= '9') {
@@ -3008,10 +3002,23 @@ void handle_mouse_input() {
     }
 }
 
+
+static float calc_frame_stopping_damage(float dt, float dx, float dy, float dz) {
+    float mag = v3_mag(dx, dy, dz);
+    return calc_damage_from_impulse(mag * dt);
+}
+
+
+static void add_player_damage(Player *p, unsigned damage) {
+    p->attrs.taken_damage += damage;
+}
+
+
 // Player movement
 // TODO: rotate player body in movement direction.
 void handle_movement(double dt) {
-    State *s = &g->players->state;
+    Player *p = &g->players[0];
+    State *s = &p->state;
     int sz = 0, sx = 0;
     if (!g->typing) {
         float m = dt * 1.0;
@@ -3028,24 +3035,24 @@ void handle_movement(double dt) {
     }
     // Get acceleration motion from the inputs
     float ax, ay, az;
-    get_motion_vector(s->flying, sz, sx, s->rx, s->ry, &ax, &ay, &az);
+    get_motion_vector(p->attrs.flying, sz, sx, s->rx, s->ry, &ax, &ay, &az);
     // Handle jump/fly
     if (!g->typing) {
         // Handle jump or fly up
         if (glfwGetKey(g->window, CRAFT_KEY_JUMP)) {
             float t = glfwGetTime();
-            if (s->flying) {
+            if (p->attrs.flying) {
                 ay = g->physics.flysp;
             }
-            else if (s->is_grounded && (t - s->jumpt > g->physics.jumpcool)) {
+            else if (p->attrs.is_grounded && (t - p->attrs.jumpt > g->physics.jumpcool)) {
                 ay = g->physics.jumpaccel;
-                s->jumpt = t;
-                s->is_grounded = 0;
+                p->attrs.jumpt = t;
+                p->attrs.is_grounded = 0;
             }
         }
         // Handle fly down
         if (glfwGetKey(g->window, CRAFT_KEY_CROUCH)) {
-            if (s->flying) {
+            if (p->attrs.flying) {
                 ay = -g->physics.flysp;
             }
         }
@@ -3053,13 +3060,13 @@ void handle_movement(double dt) {
     // Add acceleration from input motion to velocity
     {
         // horizontal and vertical speed
-        float hspeed = s->flying? g->physics.flysp : g->physics.walksp;
+        float hspeed = p->attrs.flying? g->physics.flysp : g->physics.walksp;
         s->vx += ax * hspeed * dt;
         s->vz += az * hspeed * dt;
         s->vy += ay * dt;
     }
     // Apply gravity
-    if (!s->flying) {
+    if (!p->attrs.flying) {
         s->vy -= g->physics.grav * dt;
     }
     // Set a minimum velocity (squared) for velocity to be clamped to 0
@@ -3072,7 +3079,7 @@ void handle_movement(double dt) {
         }
     }
     // Decay velocity differently for flying or not flying
-    if (s->flying) {
+    if (p->attrs.flying) {
         float r = g->physics.flyr * dt;
         s->vx -= s->vx * r;
         s->vy -= s->vy * r;
@@ -3080,7 +3087,7 @@ void handle_movement(double dt) {
     }
     else {
         // resistance horizontal factor, and resistance vertical factor
-        float rh = dt * (s->is_grounded? g->physics.groundr : g->physics.airhr);
+        float rh = dt * (p->attrs.is_grounded? g->physics.groundr : g->physics.airhr);
         s->vx -= s->vx * rh;
         s->vz -= s->vz * rh;
         s->vy -= s->vy * g->physics.airvr * dt;
@@ -3103,7 +3110,7 @@ void handle_movement(double dt) {
                 bx, by, bz, ex, ey, ez, s->vx * dt, s->vy * dt, s->vz * dt,
                 &nx, &ny, &nz);
     // Reset this flag because collision will set it if necessary.
-    s->is_grounded = 0;
+    p->attrs.is_grounded = 0;
     // There is no collision this frame if "t == 1.0".
     if (0.0 <= t && t < 1.0) {
         // There was a collision
@@ -3112,6 +3119,7 @@ void handle_movement(double dt) {
         const float ut = dt / steps;
         const float oppose = 1.2 * ut;
         const float pad = 0.001;
+        float vx0 = s->vx, vy0 = s->vy, vz0 = s->vz; // save original velocity for damage calculation
         for (int i = 0; i < steps; i++) {
             t = box_sweep_world(
                     bx, by, bz, ex, ey, ez, s->vx * ut, s->vy * ut, s->vz * ut,
@@ -3135,7 +3143,7 @@ void handle_movement(double dt) {
                 s->vy = ny * oppose;
                 // Detect hitting a floor
                 if (ny > 0) {
-                    s->is_grounded = 1;
+                    p->attrs.is_grounded = 1;
                 }
             }
             else if (nz != 0.0) {
@@ -3146,6 +3154,9 @@ void handle_movement(double dt) {
         }
         // Update player position
         player_pos_inv(bx, by, bz, &s->x, &s->y, &s->z);
+        // Update player damage
+        float stopping_damage = calc_frame_stopping_damage(dt, s->vx - vx0, s->vy - vy0, s->vz - vz0);
+        if (stopping_damage) { add_player_damage(p, stopping_damage); }
     }
     else {
         // There was no collision
@@ -3290,6 +3301,26 @@ void parse_buffer(char *buffer) {
     }
 }
 
+
+static void set_default_physics(PhysicsConfig *p) {
+    memset(p, 0, sizeof(*p));
+    p->flyr = 3.0;
+    p->airhr = 8.0;
+    p->airvr = 0.1;
+    p->groundr = 8.1;
+    p->flysp = 90.0;
+    p->walksp = 80.0;
+    p->grav = 60.0;
+    p->jumpaccel = 800.0;
+    p->jumpcool = 0.51;
+    p->blockcool = 0.1;   // max 10 times per second
+    p->dblockcool = 0.05; // max 20 times per second
+    p->min_impulse_damage = 0.40;
+    p->impulse_damage_min = 10.0;
+    p->impulse_damage_scale = 380.0;
+}
+
+
 // Reset the game model
 // Arguments: none
 // Returns:
@@ -3312,19 +3343,9 @@ void reset_model() {
     g->time_changed = 1;
 
     // Default physics
-    memset(&g->physics, 0, sizeof(g->physics));
-    g->physics.flyr = 3.0;
-    g->physics.airhr = 7.4;
-    g->physics.airvr = 0.1;
-    g->physics.groundr = 8.1;
-    g->physics.flysp = 90.0;
-    g->physics.walksp = 80.0;
-    g->physics.grav = 60.0;
-    g->physics.jumpaccel = 800.0;
-    g->physics.jumpcool = 0.31;
-    g->physics.blockcool = 0.1;   // max 10 times per second
-    g->physics.dblockcool = 0.05; // max 20 times per second
+    set_default_physics(&g->physics);
 }
+
 
 // DEBUG
 int ghost_id(int pid) {
@@ -3492,4 +3513,12 @@ float box_sweep_world(
     return t;
 }
 
+// Linear function: damage(d_vel) = a + b * d_vel if d_vel > min
+float calc_damage_from_impulse(float d_vel) {
+    float min_impulse_damage = g->physics.min_impulse_damage;
+    float impulse_damage_min = g->physics.min_impulse_damage;
+    float impulse_damage_scale = g->physics.impulse_damage_scale;
+    if (d_vel < min_impulse_damage) { return 0; }
+    return roundf(impulse_damage_min + impulse_damage_scale * d_vel);
+}
 

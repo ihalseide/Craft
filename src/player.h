@@ -35,15 +35,22 @@ typedef struct {
     float vy;
     float vz;
     float t; 
+    float brx;
+} State;
+
+
+typedef struct {
     int is_grounded;
     int is_blocked;
     int flying;
-    float brx;
     float jumpt;
     float blockt;
     float dblockt;
     float autot;
-} State;
+    int taken_damage;  // amount of damage this player has taken
+    int attack_damage; // amount of damage this player attacks with
+} PlayerAttributes;
+
 
 // Player
 // - id
@@ -59,7 +66,7 @@ typedef struct {
     State state1;
     State state2;
     GLuint buffer;
-    int attack_damage;
+    PlayerAttributes attrs;
 } Player;
 
 void update_player(

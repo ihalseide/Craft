@@ -139,7 +139,7 @@ int main(int argc, char **argv) {
     // CHECK COMMAND LINE ARGUMENTS //
     if (argc == 2 || argc == 3) {
         g->mode = MODE_ONLINE;
-        strncpy(g->server_addr, argv[1], MAX_ADDR_LENGTH);
+        strncpy(g->server_addr, argv[1], MAX_ADDR_LENGTH-1);
         g->server_port = argc == 3 ? atoi(argv[2]) : DEFAULT_PORT;
         snprintf(g->db_path, MAX_PATH_LENGTH,
             "cache.%s.%d.db", g->server_addr, g->server_port);
@@ -204,15 +204,16 @@ int main(int argc, char **argv) {
         // Init local player
         Player *me = g->players;
         State *s = &g->players->state;
+        memset(me, 0, sizeof(*me));
         me->id = 0;
         me->name[0] = '\0';
         me->buffer = 0;
-        me->attack_damage = 1;
+        me->attrs.attack_damage = 1;
         g->player_count = 1;
-        //printf("player damage is %d\n", me->attack_damage);
+        //printf("player damage is %d\n", me->attrs.attack_damage);
 
         // LOAD STATE FROM DATABASE //
-        int loaded = db_load_state(&s->x, &s->y, &s->z, &s->rx, &s->ry, &s->flying);
+        int loaded = db_load_state(&s->x, &s->y, &s->z, &s->rx, &s->ry, &me->attrs.flying);
         s->brx = s->rx;
         force_chunks(me);
         if (!loaded) {
@@ -307,6 +308,7 @@ int main(int argc, char **argv) {
             float ts = 12 * g->scale;
             float tx = ts / 2;
             float ty = g->height - ts;
+
             // Technical info text
             if (SHOW_INFO_TEXT) {
                 int hour = time_of_day() * 24;
@@ -315,13 +317,24 @@ int main(int argc, char **argv) {
                 hour = hour ? hour : 12;
                 snprintf(
                     text_buffer, 1024,
-                    "(%d, %d) (%.2f, %.2f, %.2f) [%d, %d, %d] %d%cm %dfps",
+                    "(%d, %d) (%.2f, %.2f, %.2f) [%d, %d, %d] %d%cm %dfps v:<%.2f, %.2f, %.2f>",
                     chunked(s->x), chunked(s->z), s->x, s->y, s->z,
                     g->player_count, g->chunk_count,
-                    face_count * 2, hour, am_pm, fps.fps);
+                    face_count * 2, hour, am_pm, fps.fps,
+                    s->vx, s->vy, s->vz);
                 render_text(&text_attrib, ALIGN_LEFT, tx, ty, ts, text_buffer);
                 ty -= ts * 2;
             }
+
+            // Health debug text
+            {
+                snprintf(text_buffer, sizeof(text_buffer),
+                        "damage: %d",
+                        me->attrs.taken_damage);
+                render_text(&text_attrib, ALIGN_LEFT, tx, ty, ts, text_buffer);
+                ty -= ts * 2;
+            }
+
             // Chat text
             if (SHOW_CHAT_TEXT) {
                 for (int i = 0; i < MAX_MESSAGES; i++) {
@@ -387,7 +400,7 @@ int main(int argc, char **argv) {
         // SHUTDOWN //
         // Shutdown of current game mode
         // (The outer game loop may or may not continue after this)
-        db_save_state(s->x, s->y, s->z, s->rx, s->ry, s->flying);
+        db_save_state(s->x, s->y, s->z, s->rx, s->ry, me->attrs.flying);
         db_close();
         db_disable();
         client_stop();
