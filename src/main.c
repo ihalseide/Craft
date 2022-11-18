@@ -209,6 +209,7 @@ int main(int argc, char **argv) {
         me->name[0] = '\0';
         me->buffer = 0;
         me->attrs.attack_damage = 1;
+        me->attrs.reach = 8;
         g->player_count = 1;
         //printf("player damage is %d\n", me->attrs.attack_damage);
 

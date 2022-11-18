@@ -367,5 +367,5 @@ int wrap(const char *input, int max_width, char *output, int max_length) {
 }
 
 float v3_mag(float x, float y, float z) {
-    return sqrtf(x*x + y*y + z*z);
+    return sqrtf(powf(x, 2) + powf(y, 2) + powf(z, 2));
 }

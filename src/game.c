@@ -738,6 +738,8 @@ int hit_test(
     int previous, float x, float y, float z, float rx, float ry,
     int *bx, int *by, int *bz)
 {
+    //const int r = 8; // radius (blocks) (max length)
+    const float r = g->players[0].attrs.reach; // radius (blocks) (max length)
     int result = 0;
     float best = 0;
     int p = chunked(x);
@@ -746,11 +748,11 @@ int hit_test(
     get_sight_vector(rx, ry, &vx, &vy, &vz);
     for (int i = 0; i < g->chunk_count; i++) {
         Chunk *chunk = g->chunks + i;
-        if (chunk_distance(chunk, p, q) > 1) {
+        if (chunk_distance(chunk, p, q) > 1+chunked(r)) {
             continue;
         }
         int hx, hy, hz;
-        int hw = _hit_test(&chunk->map, 8, previous,
+        int hw = _hit_test(&chunk->map, r, previous,
             x, y, z, vx, vy, vz, &hx, &hy, &hz);
         if (hw > 0) {
             float d = sqrtf(
@@ -2626,6 +2628,12 @@ void parse_command(const char *buffer, int forward) {
         add_message(out);
         g->players[0].attrs.attack_damage = radius;
     }
+    else if (sscanf(buffer, "/reach %d", &radius) == 1) {
+        char out[30];
+        snprintf(out, sizeof(out), "set reach=%d", radius);
+        add_message(out);
+        g->players[0].attrs.reach = radius;
+    }
     else if (forward) {
         // If no command was found, maybe send it as a chat message
         client_talk(buffer);
@@ -2649,14 +2657,11 @@ int place_block(void)
     State *s = &g->players->state;
     int hx, hy, hz;
     int hw = hit_test(1, s->x, s->y, s->z, s->rx, s->ry, &hx, &hy, &hz);
-    if (hy > 0 && hy < 256 && is_obstacle(hw)) {
-        if (!player_intersects_block(s->x, s->y, s->z, s->vx, s->vy, s->vz, hx, hy, hz)) {
-            set_block(hx, hy, hz, items[g->item_index]);
-            record_block(hx, hy, hz, items[g->item_index]);
-            return 1;
-        }
-    }
-    return 0;
+    if (!(hy > 0 && hy < 256 && is_obstacle(hw))) { return 0; }
+    if (player_intersects_block(s->x, s->y, s->z, s->vx, s->vy, s->vz, hx, hy, hz)) { return 0; }
+    set_block(hx, hy, hz, items[g->item_index]);
+    record_block(hx, hy, hz, items[g->item_index]);
+    return 1;
 }
 
 

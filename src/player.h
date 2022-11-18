@@ -49,6 +49,7 @@ typedef struct {
     float autot;
     int taken_damage;  // amount of damage this player has taken
     int attack_damage; // amount of damage this player attacks with
+    float reach;       // reach for place/destroy/attack (in blocks)
 } PlayerAttributes;
 
 
@@ -69,6 +70,7 @@ typedef struct {
     PlayerAttributes attrs;
 } Player;
 
+
 void update_player(
         Player *player, float x, float y, float z, float rx, float ry,
         int interpolate);
@@ -83,5 +85,6 @@ void player_pos_inv(float x, float y, float z, float *px, float *py, float *pz);
 
 GLuint gen_player_buffer(
         float x, float y, float z, float rx, float ry, float brx);
+
 
 #endif /* _player_h_ */
