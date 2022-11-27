@@ -1,6 +1,7 @@
 #ifndef _item_h_
 #define _item_h_
 
+
 // Block ids/types
 #define EMPTY 0
 #define GRASS 1
@@ -59,16 +60,30 @@
 #define COLOR_30 62
 #define COLOR_31 63
 
+
 extern const int items[];
 extern const int item_count;
 extern const int blocks[256][6];
 extern const int plants[256];
 
-int is_plant(int w);
-int is_obstacle(int w);
-int is_transparent(int w);
-int is_destructable(int w);
-int block_get_max_damage(int w);
-int block_get_min_damage_threshold(int w);
+
+int is_plant(
+        int w);
+
+int is_obstacle(
+        int w);
+
+int is_transparent(
+        int w);
+
+int is_destructable(
+        int w);
+
+int block_get_max_damage(
+        int w);
+
+int block_get_min_damage_threshold(
+        int w);
+
 
 #endif

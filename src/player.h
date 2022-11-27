@@ -1,9 +1,11 @@
 #ifndef _player_h_
 #define _player_h_
 
+
+#include "config.h"
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
-#include "config.h"
+
 
 // Player hitbox extent
 #define PLAYER_WIDTH 0.4f
@@ -12,6 +14,7 @@
 
 // Difference between player's position and player's head/eye level
 #define PLAYER_HEADY 0.25f
+
 
 // State for a player
 // - x, y, z: position
@@ -71,20 +74,44 @@ typedef struct {
 } Player;
 
 
-void update_player(
-        Player *player, float x, float y, float z, float rx, float ry,
-        int interpolate);
+GLuint gen_player_buffer(
+        float x,
+        float y,
+        float z,
+        float rx,
+        float ry,
+        float brx);
 
-void interpolate_player(Player *player);
+void interpolate_player(
+        Player *player);
 
 void player_hitbox(
-        float px, float py, float pz, float *x, float *y, float *z,
-        float *ex, float *ey, float *ez);
+        float px,
+        float py,
+        float pz,
+        float *x,
+        float *y,
+        float *z,
+        float *ex,
+        float *ey,
+        float *ez);
 
-void player_pos_inv(float x, float y, float z, float *px, float *py, float *pz);
+void player_pos_inv(
+        float x,
+        float y,
+        float z,
+        float *px,
+        float *py,
+        float *pz);
 
-GLuint gen_player_buffer(
-        float x, float y, float z, float rx, float ry, float brx);
+void update_player(
+        Player *player,
+        float x,
+        float y,
+        float z,
+        float rx,
+        float ry,
+        int interpolate);
 
 
 #endif /* _player_h_ */

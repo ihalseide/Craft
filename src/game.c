@@ -809,6 +809,7 @@ int hit_test_face(Player *player, int *x, int *y, int *z, int *face) {
     return 0;
 }
 
+
 // Function to return whether a player position instersects the given
 // block position.
 // Arguments:
@@ -830,6 +831,7 @@ int player_intersects_block(
     return box_intersect_block(bx, by, bz, ex, ey, ez, hx, hy, hz);
 }
 
+
 // Generate the buffer data for a single sign model
 // Arguments:
 // - data: pointer to write the data to
@@ -841,7 +843,9 @@ int player_intersects_block(
 // Returns:
 // - number of character faces
 int _gen_sign_buffer(
-    GLfloat *data, float x, float y, float z, int face, const char *text)
+    GLfloat *data,
+    float x, float y, float z,
+    int face, const char *text)
 {
     static const int glyph_dx[8] = { 0,  0, -1,  1, 1,  0, -1,  0 };
     static const int glyph_dz[8] = { 1, -1,  0,  0, 0, -1,  0,  1 };
@@ -903,6 +907,7 @@ int _gen_sign_buffer(
     return count;
 }
 
+
 // Create the game's sign buffer for a chunk
 // Arguments:
 // - chunk: the chunk to generate the sign models for
@@ -931,6 +936,7 @@ void gen_sign_buffer(Chunk *chunk) {
     chunk->sign_faces = faces;
 }
 
+
 // Predicate function for whether a given chunk has any block light values
 // Arguments:
 // - chunk: the chunk to check
@@ -958,10 +964,10 @@ int has_lights(Chunk *chunk) {
     return 0;
 }
 
+
 // Mark a chunk as dirty and also potentially mark the neighboring chunks
 // Arguments:
 // - chunk: chunk to mark as dirty
-// Returns: none
 void dirty_chunk(Chunk *chunk) {
     chunk->dirty = 1;
     if (has_lights(chunk)) {
@@ -975,6 +981,7 @@ void dirty_chunk(Chunk *chunk) {
         }
     }
 }
+
 
 // Arguments:
 // - neighbors
@@ -1027,12 +1034,14 @@ void occlusion(
     }
 }
 
+
 #define XZ_SIZE (CHUNK_SIZE * 3 + 2)
 #define XZ_LO (CHUNK_SIZE)
 #define XZ_HI (CHUNK_SIZE * 2 + 1)
 #define Y_SIZE 258
 #define XYZ(x, y, z) ((y) * XZ_SIZE * XZ_SIZE + (x) * XZ_SIZE + (z))
 #define XZ(x, z) ((x) * XZ_SIZE + (z))
+
 
 // Arguments:
 // - opaque
@@ -1070,6 +1079,7 @@ void light_fill(
     light_fill(opaque, light, x, y, z - 1, w, 0);
     light_fill(opaque, light, x, y, z + 1, w, 0);
 }
+
 
 // Arguments:
 // - item
@@ -1251,6 +1261,7 @@ void compute_chunk(WorkerItem *item) {
     item->faces = faces;
     item->data = data;
 }
+
 
 // Arguments:
 // - chunk
@@ -1526,6 +1537,27 @@ void force_chunks(Player *player) {
         }
     }
 }
+
+
+// Matrix - Set 3D camera for player state (also uses global game state)
+void set_matrix_3d_state_view(
+        float matrix[16],
+        const State *s)
+{
+    set_matrix_3d(
+            matrix,
+            g->width,
+            g->height,
+            s->x,
+            s->y,
+            s->z,
+            s->rx,
+            s->ry,
+            g->fov,
+            g->ortho,
+            g->render_radius);
+}
+
 
 // Arguments:
 // - player
@@ -1964,6 +1996,7 @@ int render_chunks(Attrib *attrib, Player *player) {
     return result;
 }
 
+
 // Arguments:
 // - attrib
 // - player
@@ -1996,6 +2029,7 @@ void render_signs(Attrib *attrib, Player *player) {
     }
 }
 
+
 // Arguments:
 // - attrib
 // - player
@@ -2027,6 +2061,7 @@ void render_sign(Attrib *attrib, Player *player) {
     del_buffer(buffer);
 }
 
+
 // Arguments:
 // - attrib
 // - player
@@ -2050,6 +2085,7 @@ void render_players(Attrib *attrib, Player *player) {
     }
 }
 
+
 // Arguments:
 // - attrib
 // - player
@@ -2067,6 +2103,7 @@ void render_sky(Attrib *attrib, Player *player, GLuint buffer) {
     glUniform1f(attrib->timer, time_of_day());
     draw_triangles_3d(attrib, buffer, 512 * 3);
 }
+
 
 // Arguments:
 // - attrib
@@ -2092,6 +2129,7 @@ void render_wireframe(Attrib *attrib, Player *player) {
     }
 }
 
+
 void render_box_wireframe(Attrib *attrib, DebugBox *box, Player *p)
 {
     if (!box->active)
@@ -2113,6 +2151,7 @@ void render_box_wireframe(Attrib *attrib, DebugBox *box, Player *p)
     glLineWidth(1);
     //glDisable(GL_COLOR_LOGIC_OP);
 }
+
 
 // Render all of the players' hitboxes except for the given player
 // Arguments:

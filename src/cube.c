@@ -1,37 +1,31 @@
-#include <math.h>
 #include "cube.h"
 #include "item.h"
 #include "matrix.h"
 #include "util.h"
+#include <math.h>
 
-// Make a complete cube model.
-// Arguments:
-// - data: output pointer
-// - ao
-// - light
-// - left: whether to generate a left face
-// - right: whether to generate a right face
-// - top: whether to generate a top face
-// - bottom: whether to generate a bottom face
-// - front: whether to generate a front face
-// - back: whether to generate a back face
-// - wleft: texture tile number for left face
-// - wright: texture tile number for right face
-// - wtop: texture tile number for top face
-// - wbottom: texture tile number for bottom face
-// - wfront: texture tile number for front face
-// - wback: texture tile number for back face
-// - x: block x center position
-// - y: block y center position
-// - z: block z center position
-// - n: cube scale; the distance of each cube face from the cube center
-// Returns:
-// - writes specific values to the data pointer
-void make_cube_faces(
-    float *data, float ao[6][4], float light[6][4],
-    int left, int right, int top, int bottom, int front, int back,
-    int wleft, int wright, int wtop, int wbottom, int wfront, int wback,
-    float x, float y, float z, float n)
+
+// Make a complete cube model with between 0 and 6 faces
+void make_cube_faces(             // Writes specific values to the output pointer
+        float *data,              // output pointer
+        const float ao[6][4],
+        const float light[6][4],
+        int left,                 // whether to generate a left face
+        int right,                // whether to generate a right face
+        int top,                  // whether to generate a top face
+        int bottom,               // whether to generate a bottom face
+        int front,                // whether to generate a front face
+        int back,                 // whether to generate a back face
+        int wleft,                // id for tile texture for left face
+        int wright,               // id for tile texture for right face
+        int wtop,                 // id for tile texture for top face
+        int wbottom,              // id for tile texture for bottom face
+        int wfront,               // id for tile texture for front face
+        int wback,                // id for tile texture for back face
+        float x,                  // block center position
+        float y,
+        float z,
+        float n)                  // cube scale (extent from center)
 {
     // 6 faces each with 4 points, each of which are 3-vectors
     static const float positions[6][4][3] = {
@@ -113,28 +107,23 @@ void make_cube_faces(
     }
 }
 
+
 // Make a cube model for a block
-// Arguments:
-// - data: output pointer
-// - ao
-// - light
-// - left: whether to generate a left face
-// - right: whether to generate a right face
-// - top: whether to generate a top face
-// - bottom: whether to generate a bottom face
-// - front: whether to generate a front face
-// - back: whether to generate a back face
-// - x: block x center position
-// - y: block y center position
-// - z: block z center position
-// - n: cube scale; the distance of each face from the cube center
-// - w: block id to use for textures
-// Returns:
-// - writes specific values to the data pointer
-void make_cube(
-    float *data, float ao[6][4], float light[6][4],
-    int left, int right, int top, int bottom, int front, int back,
-    float x, float y, float z, float n, int w)
+void make_cube(                   // writes specific values to the data pointer
+        float *data,              // output pointer
+        const float ao[6][4],
+        const float light[6][4],
+        int left,                 // whether to generate the faces
+        int right,
+        int top, 
+        int bottom,
+        int front,
+        int back,
+        float x,                  // cube center
+        float y,
+        float z,
+        float n,                  // cube scale (aka extent)
+        int w)                    // cube tile ID
 {
     // Get blocks texture faces (the blocks lookup table is defined in item.c)
     int wleft = blocks[w][0];
@@ -144,28 +133,39 @@ void make_cube(
     int wfront = blocks[w][4];
     int wback = blocks[w][5];
     make_cube_faces(
-        data, ao, light,
-        left, right, top, bottom, front, back,
-        wleft, wright, wtop, wbottom, wfront, wback,
-        x, y, z, n);
+            data,
+            ao,
+            light,
+            left,
+            right,
+            top,
+            bottom,
+            front,
+            back,
+            wleft,
+            wright,
+            wtop,
+            wbottom,
+            wfront,
+            wback,
+            x,
+            y,
+            z,
+            n);
 }
 
+
 // Make a plant model
-// Arguments:
-// - data: output pointer
-// - ao
-// - light
-// - px:
-// - py:
-// - pz:
-// - n:
-// - w:
-// - rotation:
-// Returns:
-// - writes specific values to the data pointer
-void make_plant(
-    float *data, float ao, float light,
-    float px, float py, float pz, float n, int w, float rotation)
+void make_plant(       // writes specific values to the data pointer
+        float *data,   // output pointer
+        float ao,
+        float light,
+        float px,
+        float py,
+        float pz,
+        float n,
+        int w,
+        float rotation)
 {
     static const float positions[4][4][3] = {
         {{ 0, -1, -1}, { 0, -1, +1}, { 0, +1, -1}, { 0, +1, +1}},
@@ -231,17 +231,16 @@ void make_plant(
     mat_apply(data, ma, 24, 0, 10);
 }
 
+
 // Make a player model
-// Arguments:
-// - data: output pointer
-// - x, y, z: player position
-// - rx, ry: rotation x and y
-// - brx: body rotation x
-// Returns:
-// - writes specific values to the data pointer
-void make_player(
-    float *data,
-    float x, float y, float z, float rx, float ry, float brx)
+void make_player(     // writes specific values to the data pointer
+        float *data,  // output pointer
+        float x,      // player position
+        float y,
+        float z,
+        float rx,     // player (head) rotation
+        float ry,
+        float brx)    // player body rotation
 {
     float ao[6][4] = {0};
     float light[6][4] = {
@@ -255,10 +254,10 @@ void make_player(
     // Make a player head with specific texture tiles
     // and a scale smaller than a normal block
     make_cube_faces(
-        data, ao, light,
-        1, 1, 1, 1, 1, 1,
-        226, 224, 241, 209, 225, 227,
-        0, 0, 0, 0.35);
+            data, ao, light,
+            1, 1, 1, 1, 1, 1,
+            226, 224, 241, 209, 225, 227,
+            0, 0, 0, 0.35);
     float ma[16];
     float mb[16];
     // Rotate
@@ -274,10 +273,10 @@ void make_player(
     // Make a player body
     const int offset = 36*10;
     make_cube_faces(
-        data + offset, ao, light,
-        1, 1, 1, 1, 1, 1,
-        230, 228, 245, 213, 229, 231,
-        0, 0, 0, 1);
+            data + offset, ao, light,
+            1, 1, 1, 1, 1, 1,
+            230, 228, 245, 213, 229, 231,
+            0, 0, 0, 1);
     mat_translate(ma, x, y - 0.70, z);
     mat_rotate(mb, 0, 1, 0, brx);
     mat_multiply(ma, ma, mb);
@@ -286,19 +285,16 @@ void make_player(
     mat_apply(data, ma, 36, offset, 10);
 }
 
+
 // Make a 3D box wireframe model
-// Arguments:
-// - data: output pointer (must have room for 24*3 floats)
-// - x: x position
-// - y: y position
-// - z: z position
-// - ex: x extent (distance from center to face)
-// - ey: y extent (distance from center to face)
-// - ez: z extent (distance from center to face)
-// Returns:
-// - writes specific values to the data pointer
-void make_box_wireframe(
-        float *data, float x, float y, float z, float ex, float ey, float ez)
+void make_box_wireframe(  // writes specific values to the data pointer
+        float *data,      // output pointer (must have room for 24*3 floats)
+        float x,          // center
+        float y,
+        float z,
+        float ex,         // extent
+        float ey,
+        float ez)
 {
     // Make a unit cube at the origin because we will translate and scale it
     // with matrix math.
@@ -314,16 +310,15 @@ void make_box_wireframe(
     mat_apply(data, ma, count, offset, stride);
 }
 
+
 // Make a cube wireframe model
-// Arguments:
-// - data: output pointer (must have room for 24*3 floats)
-// - x: block x position
-// - y: block y position
-// - z: block z position
-// - n: cube scale; the distance of each cube face from the cube center
-// Returns:
-// - writes specific values to the data pointer
-void make_cube_wireframe(float *data, float x, float y, float z, float n) {
+void make_cube_wireframe(  // writes specific values to the data pointer
+        float *data,       // data: output pointer (must have room for 24*3 floats)
+        float x,           // block/cube position
+        float y,
+        float z,
+        float n)           // cube scale
+{
     // 8 points, each of which are 3-vectors
     static const float positions[8][3] = {
         {-1, -1, -1},
@@ -351,19 +346,15 @@ void make_cube_wireframe(float *data, float x, float y, float z, float n) {
     }
 }
 
+
 // Make a rectangle for a 2D text character.
-// Arguments:
-// - data: output pointer
-// - x: character center x
-// - y: character center y
-// - n: character width (from center to edge)
-// - m: character height (from center to edge)
-// - c: ASCII character value
-// Returns:
-// - data: output pointer
 void make_character(
-    float *data,
-    float x, float y, float n, float m, char c)
+        float *data,  // output pointer
+        float x,      // center x
+        float y,      // center y
+        float n,      // width (extent from center to edge)
+        float m,      // height (extent from center to edge)
+        char c)       // ascii character
 {
     float *d = data;
     float s = 0.0625;
@@ -386,19 +377,16 @@ void make_character(
     *(d++) = du + 0; *(d++) = dv + b;
 }
 
+
 // Make a rectangle for a 3D text character (for rendering signs).
-// Arguments:
-// - data: output pointer
-// - x: character center x
-// - y: character center y
-// - z: character center z
-// - n: scale
-// - face: which cube face the text is on
-// - c: ASCII character value
-// Returns:
-// - data: output pointer
 void make_character_3d(
-    float *data, float x, float y, float z, float n, int face, char c)
+        float *data,     // output pointer
+        float x,         // character center x
+        float y,         // character center y
+        float z,         // character center z
+        float n,         // scale
+        int face,        // which cube face the text is on
+        char c)          // ASCII character value
 {
     static const float positions[8][6][3] = {
         {{0, -2, -1}, {0, +2, +1}, {0, +2, -1},
@@ -456,12 +444,19 @@ void make_character_3d(
     }
 }
 
+
 // Make a sphere with radius r and the given level of detail.
 // NOTE: Meant to be called recursively and by make_sphere().
 int _make_sphere(
-    float *data, float r, int detail,
-    float *a, float *b, float *c,
-    float *ta, float *tb, float *tc)
+        float *data,
+        float r,
+        int detail,
+        float *a,
+        float *b,
+        float *c,
+        float *ta,
+        float *tb,
+        float *tc)
 {
     if (detail == 0) {
         float *d = data;
@@ -504,6 +499,7 @@ int _make_sphere(
     }
 }
 
+
 // Make a sphere with radius r and the given level of detail.
 // Arguments:
 // - data: output pointer
@@ -512,16 +508,20 @@ int _make_sphere(
 // Returns:
 // - data: output pointer
 // NOTE: Table of resources needed for each level of detail:
-//   detail, triangles, floats
-//   0, 8, 192
-//   1, 32, 768
-//   2, 128, 3072
-//   3, 512, 12288
-//   4, 2048, 49152
-//   5, 8192, 196608
-//   6, 32768, 786432
-//   7, 131072, 3145728
-void make_sphere(float *data, float r, int detail) {
+//   detail, triangles,  floats
+//        0,         8,     192
+//        1,        32,     768
+//        2,       128,    3072
+//        3,       512,   12288
+//        4,      2048,   49152
+//        5,      8192,  196608
+//        6,     32768,  786432
+//        7,    131072, 3145728
+void make_sphere(
+        float *data,
+        float r,
+        int detail)
+{
     static int indices[8][3] = {
         {4, 3, 0}, {1, 4, 0},
         {3, 4, 5}, {4, 1, 5},
@@ -541,13 +541,15 @@ void make_sphere(float *data, float r, int detail) {
     int total = 0;
     for (int i = 0; i < 8; i++) {
         int n = _make_sphere(
-            data, r, detail,
-            positions[indices[i][0]],
-            positions[indices[i][1]],
-            positions[indices[i][2]],
-            uvs[indices[i][0]],
-            uvs[indices[i][1]],
-            uvs[indices[i][2]]);
+                data,
+                r,
+                detail,
+                positions[indices[i][0]],
+                positions[indices[i][1]],
+                positions[indices[i][2]],
+                uvs[indices[i][0]],
+                uvs[indices[i][1]],
+                uvs[indices[i][2]]);
         total += n; data += n * 24;
     }
 }

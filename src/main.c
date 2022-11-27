@@ -14,14 +14,10 @@
 #include <string.h>
 #include <time.h>
 
+
 extern Model *g;
 
-// Main program code
-// Arguments:
-// - argc
-// - argv
-// Returns:
-// - zero upon success, non-zero upon failure
+
 int main(int argc, char **argv) {
 
     // INITIALIZATION //
