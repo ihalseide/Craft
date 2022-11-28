@@ -272,19 +272,18 @@ void set_matrix_2d(float *matrix, int width, int height) {
 }
 
 // Set matrix reference to a 3D view, either orthographic or perspective.
-// Aguments:
-// - matrix: matrix to modify
-// - width: target viewport width
-// - height: target viewport height
-// - x, y, z:
-// - rx, ry: rotation x and y
-// - fov: field of view
-// - ortho: flag to indicate an orthographic view
-// - radius
 void set_matrix_3d(
-    float *matrix, int width, int height,
-    float x, float y, float z, float rx, float ry,
-    float fov, int ortho, int radius)
+    float *matrix,   // matrix to set
+    int width,
+    int height,
+    float x,         // position x
+    float y,         // position y
+    float z,         // position z
+    float rx,        // rotation around x axis
+    float ry,        // rotation around y axis
+    float fov,       // field of view
+    int ortho,       // orthographic/perspective control
+    int radius)
 {
     float a[16];
     float b[16];

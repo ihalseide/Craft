@@ -930,10 +930,11 @@ int hit_test_face(
         int *face)
 {
     State *s = &player->state;
-    int w = hit_test(0, s->x, s->y, s->z, s->rx, s->ry, x, y, z);
+    float eye_y = player_eye_y(s->y);
+    int w = hit_test(0, s->x, eye_y, s->z, s->rx, s->ry, x, y, z);
     if (is_obstacle(w)) {
         int hx, hy, hz;
-        hit_test(1, s->x, s->y, s->z, s->rx, s->ry, &hx, &hy, &hz);
+        hit_test(1, s->x, eye_y, s->z, s->rx, s->ry, &hx, &hy, &hz);
         int dx = hx - *x;
         int dy = hy - *y;
         int dz = hz - *z;
@@ -964,29 +965,26 @@ int hit_test_face(
 
 // Function to return whether a player position instersects the given
 // block position.
-// Arguments:
-// - height
-// - x, y, z: player position
-// - vx, vy, vz: player velocity
-// - hx, hy, hz: block position to test
-// Returns:
-// - non-zero if the player intersects the given block position
-int player_intersects_block(
-        float x,
-        float y,
-        float z,
-        float vx,
-        float vy,
-        float vz,
-        int hx,
-        int hy,
-        int hz)
+int player_intersects_block(  // Returns non-zero if the player intersects the given block position
+        float x,              // player x
+        float y,              // player y
+        float z,              // player z
+        float vx,             // player velocity x
+        float vy,             // player velocity y
+        float vz,             // player velocity z
+        int bx,               // block x
+        int by,               // block y
+        int bz)               // block z
 {
-    float bx, by, bz, ex, ey, ez;
-    player_hitbox(x, y, z, &bx, &by, &bz, &ex, &ey, &ez);
-    box_broadphase(bx, by, bz, ex, ey, ez, vx, vy, vz, &bx, &by, &bz,
+    float ex, ey, ez;
+    player_hitbox_extent(&ex, &ey, &ez);
+    box_broadphase(
+            x, y, z,
+            ex, ey, ez,
+            vx, vy, vz,
+            &x, &y, &z,
             &ex, &ey, &ez);
-    return box_intersect_block(bx, by, bz, ex, ey, ez, hx, hy, hz);
+    return box_intersect_block(x, y, z, ex, ey, ez, bx, by, bz);
 }
 
 
@@ -1745,26 +1743,6 @@ void force_chunks(
 }
 
 
-// Matrix - Set 3D camera for player state (also uses global game state)
-void set_matrix_3d_state_view(
-        float matrix[16],
-        const State *s)
-{
-    set_matrix_3d(
-            matrix,
-            g->width,
-            g->height,
-            s->x,
-            s->y,
-            s->z,
-            s->rx,
-            s->ry,
-            g->fov,
-            g->ortho,
-            g->render_radius);
-}
-
-
 // Arguments:
 // - player
 // - worker
@@ -1775,7 +1753,7 @@ void ensure_chunks_worker(
 {
     State *s = &player->state;
     float matrix[16];
-    set_matrix_3d_state_view(matrix, s);
+    set_matrix_3d_player_camera(matrix, player);
     float planes[6][4];
     frustum_planes(planes, g->render_radius, matrix);
     int p = chunked(s->x);
@@ -2260,17 +2238,18 @@ int render_chunks(
 {
     int result = 0;
     State *s = &player->state;
+    float eye_y = player_eye_y(s->y);
     ensure_chunks(player);
     int p = chunked(s->x);
     int q = chunked(s->z);
     float light = get_daylight();
     float matrix[16];
-    set_matrix_3d_state_view(matrix, s);
+    set_matrix_3d_player_camera(matrix, player);
     float planes[6][4];
     frustum_planes(planes, g->render_radius, matrix);
     glUseProgram(attrib->program);
     glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
-    glUniform3f(attrib->camera, s->x, s->y, s->z);
+    glUniform3f(attrib->camera, s->x, eye_y, s->z);
     glUniform1i(attrib->sampler, 0);
     glUniform1i(attrib->extra1, 2);
     glUniform1f(attrib->extra2, light);
@@ -2304,7 +2283,7 @@ void render_signs(
     int p = chunked(s->x);
     int q = chunked(s->z);
     float matrix[16];
-    set_matrix_3d_state_view(matrix, s);
+    set_matrix_3d_player_camera(matrix, player);
     float planes[6][4];
     frustum_planes(planes, g->render_radius, matrix);
     glUseProgram(attrib->program);
@@ -2341,9 +2320,8 @@ void render_sign(
     if (!hit_test_face(player, &x, &y, &z, &face)) {
         return;
     }
-    State *s = &player->state;
     float matrix[16];
-    set_matrix_3d_state_view(matrix, s);
+    set_matrix_3d_player_camera(matrix, player);
     glUseProgram(attrib->program);
     glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
     glUniform1i(attrib->sampler, 3);
@@ -2365,11 +2343,12 @@ void render_players(
         Player *player)
 {
     State *s = &player->state;
+    float eye_y = player_eye_y(s->y);
     float matrix[16];
-    set_matrix_3d_state_view(matrix, s);
+    set_matrix_3d_player_camera(matrix, player);
     glUseProgram(attrib->program);
     glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
-    glUniform3f(attrib->camera, s->x, s->y, s->z);
+    glUniform3f(attrib->camera, s->x, eye_y, s->z);
     glUniform1i(attrib->sampler, 0);
     glUniform1f(attrib->timer, time_of_day());
     for (int i = 0; i < g->player_count; i++) {
@@ -2405,10 +2384,11 @@ void render_wireframe(
         Player *player)
 {
     State *s = &player->state;
+    float eye_y = player_eye_y(s->y);
     float matrix[16];
-    set_matrix_3d_state_view(matrix, s);
+    set_matrix_3d_player_camera(matrix, player);
     int hx, hy, hz;
-    int hw = hit_test(0, s->x, s->y, s->z, s->rx, s->ry, &hx, &hy, &hz);
+    int hw = hit_test(0, s->x, eye_y, s->z, s->rx, s->ry, &hx, &hy, &hz);
     if (is_obstacle(hw)) {
         glUseProgram(attrib->program);
         glLineWidth(1);
@@ -2429,11 +2409,10 @@ void render_box_wireframe(
         Player *p)
 {
     if (!box->active) { return; }
-    State *s = &p->state;
     glUseProgram(attrib->program);
     float matrix[16];
     glLineWidth(3);
-    set_matrix_3d_state_view(matrix, s);
+    set_matrix_3d_player_camera(matrix, p);
     glUseProgram(attrib->program);
     //glEnable(GL_COLOR_LOGIC_OP);
     glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
@@ -2452,19 +2431,18 @@ void render_players_hitboxes(
         Attrib *attrib,
         Player *p)
 {
-    State *s = &p->state;
     glUseProgram(attrib->program);
     glLineWidth(2);
     for (int i = 0; i < g->player_count; i++) {
         Player *other = g->players + i;
         if (other != p) {
             float matrix[16];
-            set_matrix_3d_state_view(matrix, s);
+            set_matrix_3d_player_camera(matrix, p);
             glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
             State *os = &other->state;
-            float x, y, z, ex, ey, ez;
-            player_hitbox(os->x, os->y, os->z, &x, &y, &z, &ex, &ey, &ez);
-            GLuint box_buffer = gen_box_wireframe_buffer(x, y, z, ex, ey, ez);
+            float ex, ey, ez;
+            player_hitbox_extent(&ex, &ey, &ez);
+            GLuint box_buffer = gen_box_wireframe_buffer(os->x, os->y, os->z, ex, ey, ez);
             draw_lines(attrib, box_buffer, 3, 24);
             del_buffer(box_buffer);
         }
@@ -3015,8 +2993,9 @@ void parse_command(
 void on_light() 
 {
     State *s = &g->players->state;
+    float y = player_eye_y(s->y);
     int hx, hy, hz;
-    int hw = hit_test(0, s->x, s->y, s->z, s->rx, s->ry, &hx, &hy, &hz);
+    int hw = hit_test(0, s->x, y, s->z, s->rx, s->ry, &hx, &hy, &hz);
     if (hy > 0 && hy < 256 && is_destructable(hw)) {
         toggle_light(hx, hy, hz);
     }
@@ -3027,10 +3006,11 @@ void on_light()
 int place_block()
 {
     State *s = &g->players->state;
+    float y = player_eye_y(s->y);
     int hx, hy, hz;
-    int hw = hit_test(1, s->x, s->y, s->z, s->rx, s->ry, &hx, &hy, &hz);
+    int hw = hit_test(1, s->x, y, s->z, s->rx, s->ry, &hx, &hy, &hz);
     if (!(hy > 0 && hy < 256 && is_obstacle(hw))) { return 0; }
-    if (player_intersects_block(s->x, s->y, s->z, s->vx, s->vy, s->vz, hx, hy, hz)) { return 0; }
+    if (player_intersects_block(s->x, y, s->z, s->vx, s->vy, s->vz, hx, hy, hz)) { return 0; }
     set_block(hx, hy, hz, items[g->item_index]);
     record_block(hx, hy, hz, items[g->item_index]);
     return 1;
@@ -3041,8 +3021,9 @@ int place_block()
 int break_block()
 {
     State *s = &(g->players[0].state);
+    float y = player_eye_y(s->y);
     int hx, hy, hz;
-    int hw = hit_test(0, s->x, s->y, s->z, s->rx, s->ry, &hx, &hy, &hz);
+    int hw = hit_test(0, s->x, y, s->z, s->rx, s->ry, &hx, &hy, &hz);
 
     // Only break blocks that are in bounds and are destructable
     if (!(hy > 0 && hy < 256 && is_destructable(hw))) {
@@ -3091,8 +3072,9 @@ void on_right_click()
 void on_middle_click() 
 {
     State *s = &g->players->state;
+    float y = player_eye_y(s->y);
     int hx, hy, hz;
-    int hw = hit_test(0, s->x, s->y, s->z, s->rx, s->ry, &hx, &hy, &hz);
+    int hw = hit_test(0, s->x, y, s->z, s->rx, s->ry, &hx, &hy, &hz);
     for (int i = 0; i < item_count; i++) {
         if (items[i] == hw) {
             g->item_index = i;
@@ -3544,8 +3526,9 @@ int handle_dynamic_collision(  // Returns whether there was a collision or not
     State *s = &p->state;
 
     // Get player hitbox
-    float bx, by, bz, ex, ey, ez;
-    player_hitbox(s->x, s->y, s->z, &bx, &by, &bz, &ex, &ey, &ez);
+    float bx = s->x, by = s->y, bz = s->z;
+    float ex, ey, ez;
+    player_hitbox_extent(&ex, &ey, &ez);
 
     float nx, ny, nz; // normal vector to be set from swept collision
 
@@ -3657,7 +3640,7 @@ void handle_movement(
     // Make sure position does not go below the world
     if (s->y < 0) {
         s->vy = 0;
-        s->y = highest_block(s->x, s->z) + PLAYER_HEIGHT + PLAYER_HEADY;
+        s->y = highest_block(s->x, s->z) + PLAYER_HEIGHT;
     }
 }
 

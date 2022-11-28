@@ -13,7 +13,7 @@
 #define PLAYER_BLOCKHEIGHT 3
 
 // Difference between player's position and player's head/eye level
-#define PLAYER_HEADY 0.25f
+#define PLAYER_HEAD_Y PLAYER_HEIGHT - 0.25f
 
 
 // State for a player
@@ -74,6 +74,12 @@ typedef struct {
 } Player;
 
 
+void player_hitbox_extent(
+        float *ex,
+        float *ey,
+        float *ez);
+
+
 GLuint gen_player_buffer(
         float x,
         float y,
@@ -85,17 +91,6 @@ GLuint gen_player_buffer(
 void interpolate_player(
         Player *player);
 
-void player_hitbox(
-        float px,
-        float py,
-        float pz,
-        float *x,
-        float *y,
-        float *z,
-        float *ex,
-        float *ey,
-        float *ez);
-
 void update_player(
         Player *player,
         float x,
@@ -104,6 +99,14 @@ void update_player(
         float rx,
         float ry,
         int interpolate);
+
+
+void set_matrix_3d_player_camera(
+        float matrix[16],
+        const Player *p);
+
+float player_eye_y(
+        float y);
 
 
 #endif /* _player_h_ */

@@ -1,6 +1,8 @@
 #include "config.h"
 #include "config.h"
 #include "cube.h"
+#include "game.h"
+#include "matrix.h"
 #include "player.h"
 #include "util.h"
 #include <GL/glew.h>
@@ -8,27 +10,19 @@
 #include <string.h>
 
 
-// Get a player's hitbox (center and extents)
-// Arguments:
-// - px, py, pz: the player's position
-// - x, y, z: pointers to output hitbox center to
-// - ex, ey, ez: pointer to output hitbox extents to
-// Returns:
-// - modifies values pointed to by x, y, z, ex, ey, and ez
-void player_hitbox(
-        float px,
-        float py,
-        float pz,
-        float *x,
-        float *y,
-        float *z,
+// compute player eye height
+float player_eye_y(  // returns player eye Y position
+        float y)     // player Y position
+{
+    return y + PLAYER_HEAD_Y;
+}
+
+
+void player_hitbox_extent(
         float *ex,
         float *ey,
         float *ez)
 {
-    *x = px;
-    *y = py;
-    *z = pz;
     *ex = PLAYER_WIDTH;
     *ey = PLAYER_HEIGHT;
     *ez = PLAYER_WIDTH;
@@ -36,7 +30,9 @@ void player_hitbox(
 
 
 // Set the current player state to interpolate between the previous known states
-void interpolate_player(Player *player) {
+void interpolate_player(
+        Player *player) 
+{
     State *s1 = &player->state1;
     State *s2 = &player->state2;
     float t1 = s2->t - s1->t;
@@ -56,19 +52,14 @@ void interpolate_player(Player *player) {
 
 
 // Update a player with a new position and rotation.
-// Arguments:
-// - player: player to modify
-// - x, y, z: new position
-// - rx, ry: new rotation
-// - interpolate: whether to interpolate position
 void update_player(
-        Player *player,
-        float x,
-        float y,
-        float z,
-        float rx,
-        float ry,
-        int interpolate)
+        Player *player,   // player to modify
+        float x,          // position x
+        float y,          // position y
+        float z,          // position z
+        float rx,         // rotation x
+        float ry,         // rotation y
+        int interpolate)  // flag to interpolate position?
 {
     if (interpolate) {
         State *s1 = &player->state1;
@@ -94,21 +85,35 @@ void update_player(
 
 
 // Create buffer for player model
-// Arguments:
-// - x, y, z: player position
-// - rx, ry: player head rotation x and rotation y
-// Returns:
-// - OpenGL buffer handle
-GLuint gen_player_buffer(
-        float x,
-        float y,
-        float z,
-        float rx,
-        float ry,
-        float brx) 
+GLuint gen_player_buffer(  // returns OpenGL buffer handle
+        float x,           // player x
+        float y,           // player y
+        float z,           // player z
+        float rx,          // player rotation x
+        float ry,          // player rotation y
+        float brx)         // player body rotation x
 {
     GLfloat *data = malloc_faces(10, 2*2*6);
     make_player(data, x, y, z, rx, ry, brx);
     return gen_faces(10, 2*6, data);
+}
+
+
+void set_matrix_3d_player_camera(   // Everything except the player pointer is output
+        float matrix[16],           // [output]
+        const Player *p)            // Player to get camera for
+{
+    set_matrix_3d(
+            matrix,
+            g->width,
+            g->height,
+            p->state.x,
+            player_eye_y(p->state.y),
+            p->state.z,
+            p->state.rx,
+            p->state.ry,
+            g->fov,
+            g->ortho,
+            g->render_radius);
 }
 
