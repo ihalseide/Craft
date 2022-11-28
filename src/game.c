@@ -562,8 +562,10 @@ void draw_player(
         Attrib *attrib,
         Player *player)
 {
-    draw_cube_offset(attrib, player->buffer, 0);
-    draw_cube_offset(attrib, player->buffer, 36);
+    const int offset = 36;
+    for (unsigned int i = 0; i < 6; i++) {
+        draw_cube_offset(attrib, player->buffer, i * offset);
+    }
 }
 
 // Find a player with a certain id

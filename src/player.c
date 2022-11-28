@@ -93,9 +93,10 @@ GLuint gen_player_buffer(  // returns OpenGL buffer handle
         float ry,          // player rotation y
         float brx)         // player body rotation x
 {
-    GLfloat *data = malloc_faces(10, 2*2*6);
+    const unsigned faces = 6 * 2 * 6;
+    GLfloat *data = malloc_faces(10, faces);
     make_player(data, x, y, z, rx, ry, brx);
-    return gen_faces(10, 2*6, data);
+    return gen_faces(10, faces, data);
 }
 
 
