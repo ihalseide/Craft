@@ -8,11 +8,13 @@
     #include <unistd.h>
 #endif
 
+
+#include "client.h"
+#include "tinycthread.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "client.h"
-#include "tinycthread.h"
+
 
 // "QUEUE_SIZE" is the number of chars in the send queue
 #define QUEUE_SIZE 1048576
@@ -32,6 +34,7 @@ static char *queue = 0;
 static int qsize = 0;
 static thrd_t recv_thread;
 static mtx_t mutex;
+
 
 // Sets the client state to be enabled.
 // Arguments: none

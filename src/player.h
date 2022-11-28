@@ -96,14 +96,6 @@ void player_hitbox(
         float *ey,
         float *ez);
 
-void player_pos_inv(
-        float x,
-        float y,
-        float z,
-        float *px,
-        float *py,
-        float *pz);
-
 void update_player(
         Player *player,
         float x,

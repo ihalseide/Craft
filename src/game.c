@@ -1566,9 +1566,7 @@ void set_matrix_3d_state_view(
 void ensure_chunks_worker(Player *player, Worker *worker) {
     State *s = &player->state;
     float matrix[16];
-    set_matrix_3d(
-        matrix, g->width, g->height,
-        s->x, s->y, s->z, s->rx, s->ry, g->fov, g->ortho, g->render_radius);
+    set_matrix_3d_state_view(matrix, s);
     float planes[6][4];
     frustum_planes(planes, g->render_radius, matrix);
     int p = chunked(s->x);
@@ -1968,9 +1966,7 @@ int render_chunks(Attrib *attrib, Player *player) {
     int q = chunked(s->z);
     float light = get_daylight();
     float matrix[16];
-    set_matrix_3d(
-        matrix, g->width, g->height,
-        s->x, s->y, s->z, s->rx, s->ry, g->fov, g->ortho, g->render_radius);
+    set_matrix_3d_state_view(matrix, s);
     float planes[6][4];
     frustum_planes(planes, g->render_radius, matrix);
     glUseProgram(attrib->program);
@@ -2006,9 +2002,7 @@ void render_signs(Attrib *attrib, Player *player) {
     int p = chunked(s->x);
     int q = chunked(s->z);
     float matrix[16];
-    set_matrix_3d(
-        matrix, g->width, g->height,
-        s->x, s->y, s->z, s->rx, s->ry, g->fov, g->ortho, g->render_radius);
+    set_matrix_3d_state_view(matrix, s);
     float planes[6][4];
     frustum_planes(planes, g->render_radius, matrix);
     glUseProgram(attrib->program);
@@ -2044,9 +2038,7 @@ void render_sign(Attrib *attrib, Player *player) {
     }
     State *s = &player->state;
     float matrix[16];
-    set_matrix_3d(
-        matrix, g->width, g->height,
-        s->x, s->y, s->z, s->rx, s->ry, g->fov, g->ortho, g->render_radius);
+    set_matrix_3d_state_view(matrix, s);
     glUseProgram(attrib->program);
     glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
     glUniform1i(attrib->sampler, 3);
@@ -2062,16 +2054,14 @@ void render_sign(Attrib *attrib, Player *player) {
 }
 
 
-// Arguments:
-// - attrib
-// - player
-// Returns: none
-void render_players(Attrib *attrib, Player *player) {
+// Render the other players for the given player
+void render_players(
+        Attrib *attrib,
+        Player *player)
+{
     State *s = &player->state;
     float matrix[16];
-    set_matrix_3d(
-        matrix, g->width, g->height,
-        s->x, s->y, s->z, s->rx, s->ry, g->fov, g->ortho, g->render_radius);
+    set_matrix_3d_state_view(matrix, s);
     glUseProgram(attrib->program);
     glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
     glUniform3f(attrib->camera, s->x, s->y, s->z);
@@ -2079,19 +2069,18 @@ void render_players(Attrib *attrib, Player *player) {
     glUniform1f(attrib->timer, time_of_day());
     for (int i = 0; i < g->player_count; i++) {
         Player *other = g->players + i;
-        if (other != player) {
-            draw_player(attrib, other);
-        }
+        if (other == player) { continue; }
+        draw_player(attrib, other);
     }
 }
 
 
-// Arguments:
-// - attrib
-// - player
-// - buffer
-// Returns: none
-void render_sky(Attrib *attrib, Player *player, GLuint buffer) {
+// Render the sky for the given player's perspective
+void render_sky(
+        Attrib *attrib,
+        Player *player,
+        GLuint buffer)
+{
     State *s = &player->state;
     float matrix[16];
     set_matrix_3d(
@@ -2105,16 +2094,14 @@ void render_sky(Attrib *attrib, Player *player, GLuint buffer) {
 }
 
 
-// Arguments:
-// - attrib
-// - player
-// Returns: none
-void render_wireframe(Attrib *attrib, Player *player) {
+// Render the wireframe of the selected block for the player
+void render_wireframe(
+        Attrib *attrib,
+        Player *player)
+{
     State *s = &player->state;
     float matrix[16];
-    set_matrix_3d(
-        matrix, g->width, g->height,
-        s->x, s->y, s->z, s->rx, s->ry, g->fov, g->ortho, g->render_radius);
+    set_matrix_3d_state_view(matrix, s);
     int hx, hy, hz;
     int hw = hit_test(0, s->x, s->y, s->z, s->rx, s->ry, &hx, &hy, &hz);
     if (is_obstacle(hw)) {
@@ -2130,7 +2117,11 @@ void render_wireframe(Attrib *attrib, Player *player) {
 }
 
 
-void render_box_wireframe(Attrib *attrib, DebugBox *box, Player *p)
+// Render the wireframe for a box
+void render_box_wireframe(
+        Attrib *attrib,
+        DebugBox *box,
+        Player *p)
 {
     if (!box->active)
     {
@@ -2140,10 +2131,7 @@ void render_box_wireframe(Attrib *attrib, DebugBox *box, Player *p)
     glUseProgram(attrib->program);
     float matrix[16];
     glLineWidth(3);
-    set_matrix_3d(
-            matrix, g->width, g->height,
-            s->x, s->y, s->z, s->rx, s->ry, g->fov, g->ortho,
-            g->render_radius);
+    set_matrix_3d_state_view(matrix, s);
     glUseProgram(attrib->program);
     //glEnable(GL_COLOR_LOGIC_OP);
     glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
@@ -2167,10 +2155,7 @@ void render_players_hitboxes(Attrib *attrib, Player *p)
         Player *other = g->players + i;
         if (other != p) {
             float matrix[16];
-            set_matrix_3d(
-                    matrix, g->width, g->height,
-                    s->x, s->y, s->z, s->rx, s->ry, g->fov, g->ortho,
-                    g->render_radius);
+            set_matrix_3d_state_view(matrix, s);
             glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
             State *os = &other->state;
             float x, y, z, ex, ey, ez;
@@ -3058,104 +3043,160 @@ static void add_player_damage(Player *p, unsigned damage) {
 }
 
 
-// Player movement
-// TODO: rotate player body in movement direction.
-void handle_movement(double dt) {
-    Player *p = &g->players[0];
-    State *s = &p->state;
-    int sz = 0, sx = 0;
-    if (!g->typing) {
-        float m = dt * 1.0;
-        g->ortho = glfwGetKey(g->window, CRAFT_KEY_ORTHO) ? 64 : 0;
-        g->fov = glfwGetKey(g->window, CRAFT_KEY_ZOOM) ? 15 : 65;
-        if (glfwGetKey(g->window, CRAFT_KEY_FORWARD))  { sz--; }
-        if (glfwGetKey(g->window, CRAFT_KEY_BACKWARD)) { sz++; }
-        if (glfwGetKey(g->window, CRAFT_KEY_LEFT))     { sx--; }
-        if (glfwGetKey(g->window, CRAFT_KEY_RIGHT))    { sx++; }
-        if (glfwGetKey(g->window, GLFW_KEY_LEFT))      { s->rx -= m; }
-        if (glfwGetKey(g->window, GLFW_KEY_RIGHT))     { s->rx += m; }
-        if (glfwGetKey(g->window, GLFW_KEY_UP))        { s->ry += m; }
-        if (glfwGetKey(g->window, GLFW_KEY_DOWN))      { s->ry -= m; }
+// Accesses the windown input to get the keys that change the view in special ways
+void input_get_keys_view()
+{
+    g->ortho = glfwGetKey(g->window, CRAFT_KEY_ORTHO) ? 64 : 0;
+    g->fov = glfwGetKey(g->window, CRAFT_KEY_ZOOM) ? 15 : 65;
+}
+
+
+// Accesses the window input to get keys that move player cursor
+void input_get_keys_look(
+        State *s,           // player state to modify
+        float dt)           // change in time (delta t)
+{
+    const float m = dt * 1.0;
+    if (glfwGetKey(g->window, GLFW_KEY_LEFT))  { s->rx -= m; }
+    if (glfwGetKey(g->window, GLFW_KEY_RIGHT)) { s->rx += m; }
+    if (glfwGetKey(g->window, GLFW_KEY_UP))    { s->ry += m; }
+    if (glfwGetKey(g->window, GLFW_KEY_DOWN))  { s->ry -= m; }
+}
+
+
+// Accesses the window input to get keys that walk the player
+void input_get_keys_walk(
+        int *sx,        // flag for strafe X [output pointer]
+        int *sz)        // flag for strafe Y [output pointer]
+{
+    if (glfwGetKey(g->window, CRAFT_KEY_FORWARD))  { *sz -= 1; }
+    if (glfwGetKey(g->window, CRAFT_KEY_BACKWARD)) { *sz += 1; }
+    if (glfwGetKey(g->window, CRAFT_KEY_LEFT))     { *sx -= 1; }
+    if (glfwGetKey(g->window, CRAFT_KEY_RIGHT))    { *sx += 1; }
+}
+
+
+// Get input and handle vertical movement when not flying
+float input_player_jump(
+        Player *p)
+{
+    if (!glfwGetKey(g->window, CRAFT_KEY_JUMP)) { return 0.0f; }
+    float t = glfwGetTime();
+    if (!p->attrs.is_grounded || !(t - p->attrs.jumpt > g->physics.jumpcool)) {
+        // Can't jump while in the air already
+        return 0.0f;
     }
-    // Get acceleration motion from the inputs
-    float ax, ay, az;
-    get_motion_vector(p->attrs.flying, sz, sx, s->rx, s->ry, &ax, &ay, &az);
-    // Handle jump/fly
-    if (!g->typing) {
-        // Handle jump or fly up
-        if (glfwGetKey(g->window, CRAFT_KEY_JUMP)) {
-            float t = glfwGetTime();
-            if (p->attrs.flying) {
-                ay = g->physics.flysp;
-            }
-            else if (p->attrs.is_grounded && (t - p->attrs.jumpt > g->physics.jumpcool)) {
-                ay = g->physics.jumpaccel;
-                p->attrs.jumpt = t;
-                p->attrs.is_grounded = 0;
-            }
-        }
-        // Handle fly down
-        if (glfwGetKey(g->window, CRAFT_KEY_CROUCH)) {
-            if (p->attrs.flying) {
-                ay = -g->physics.flysp;
-            }
-        }
+    p->attrs.jumpt = t;
+    p->attrs.is_grounded = 0;
+    return g->physics.jumpaccel;
+}
+
+
+// Get input and handle vertical movement when flying
+float input_player_fly()
+{
+    int jump = glfwGetKey(g->window, CRAFT_KEY_JUMP);
+    int down = glfwGetKey(g->window, CRAFT_KEY_CROUCH);
+    if (jump && !down) { return g->physics.flysp; }
+    else if (down && !jump) { return -g->physics.flysp; }
+    return 0.0f;
+}
+
+
+// Handle jump or fly up/down
+float input_player_jump_or_fly(  // Returns vertical acceleration
+        Player *p)
+{
+    if (p->attrs.flying) { return input_player_fly(); }
+    else { return input_player_jump(p); }
+}
+
+
+// Add player acceleration to player velocity based on proper flags
+void add_velocity(
+        float *vx,
+        float *vy,
+        float *vz,
+        float ax,
+        float ay,
+        float az,
+        float dt,
+        int is_flying,
+        const PhysicsConfig *phc)
+{
+
+    float hspeed = is_flying? phc->flysp : phc->walksp;
+    *vx += (ax * hspeed * dt);
+    *vz += (az * hspeed * dt);
+    *vy += (ay * dt);
+}
+
+
+void constrain_velocity(
+        float *vx,
+        float *vy,
+        float *vz,
+        float dt,
+        int is_flying,
+        int is_grounded,
+        const PhysicsConfig *phc)
+{
+    // Apply gravity (unless flying)
+    if (!is_flying) {
+        *vy -= phc->grav * dt;
     }
-    // Add acceleration from input motion to velocity
-    {
-        // horizontal and vertical speed
-        float hspeed = p->attrs.flying? g->physics.flysp : g->physics.walksp;
-        s->vx += ax * hspeed * dt;
-        s->vz += az * hspeed * dt;
-        s->vy += ay * dt;
-    }
-    // Apply gravity
-    if (!p->attrs.flying) {
-        s->vy -= g->physics.grav * dt;
-    }
+
     // Set a minimum velocity (squared) for velocity to be clamped to 0
-    {
-        float vminsq = 0.01;
-        if (powf(s->vx,2) + powf(s->vy,2) + powf(s->vz,2) <= vminsq ) {
-            s->vx = 0;
-            s->vy = 0;
-            s->vz = 0;
-        }
+    float vminsq = 0.01;
+    if (powf(*vx,2) + powf(*vy,2) + powf(*vz,2) <= vminsq ) {
+        *vx = 0;
+        *vy = 0;
+        *vz = 0;
     }
+
     // Decay velocity differently for flying or not flying
-    if (p->attrs.flying) {
-        float r = g->physics.flyr * dt;
-        s->vx -= s->vx * r;
-        s->vy -= s->vy * r;
-        s->vz -= s->vz * r;
+    if (is_flying) {
+        float r = phc->flyr * dt;
+        *vx -= *vx * r;
+        *vy -= *vy * r;
+        *vz -= *vz * r;
     }
     else {
         // resistance horizontal factor, and resistance vertical factor
-        float rh = dt * (p->attrs.is_grounded? g->physics.groundr : g->physics.airhr);
-        s->vx -= s->vx * rh;
-        s->vz -= s->vz * rh;
-        s->vy -= s->vy * g->physics.airvr * dt;
+        float rh = dt * (is_grounded? phc->groundr : phc->airhr);
+        *vx -= *vx * rh;
+        *vy -= *vy * phc->airvr * dt;
+        *vz -= *vz * rh;
     }
+
     // Set a maximum y velocity
-    {
-        float vy_max = 150;
-        if (fabs(s->vy) > vy_max) {
-            s->vy = vy_max * SIGN(s->vy);
-        }
+    const float vy_max = 150;
+    if (fabs(*vy) > vy_max) {
+        *vy = vy_max * SIGN(*vy);
     }
+}
+
+
+// Handle a player's collision with blocks in `handle_movement`.
+int handle_dynamic_collision(  // Returns whether there was a collision or not
+        Player *p,
+        float dt)              // delta time
+{
+    State *s = &p->state;
+
     // Get player hitbox
     float bx, by, bz, ex, ey, ez;
     player_hitbox(s->x, s->y, s->z, &bx, &by, &bz, &ex, &ey, &ez);
-    // Handle dynamic collision
-    // "nx", "ny", "nz" = normal vector from swept collision
-    float nx, ny, nz;
-    // "t" = collision time relative to this frame (between 0.0 and 1.0)
-    float t = box_sweep_world(
-                bx, by, bz, ex, ey, ez, s->vx * dt, s->vy * dt, s->vz * dt,
-                &nx, &ny, &nz);
+
+    float nx, ny, nz; // normal vector to be set from swept collision
+
     // Reset this flag because collision will set it if necessary.
     p->attrs.is_grounded = 0;
-    // There is no collision this frame if "t == 1.0".
+                      
+    // "t" = collision time relative to this frame (between 0.0 and 1.0)
+    float t = box_sweep_world(
+            bx, by, bz, ex, ey, ez, s->vx * dt, s->vy * dt, s->vz * dt,
+            &nx, &ny, &nz);
     if (0.0 <= t && t < 1.0) {
         // There was a collision
         // Do multiple collision steps per frame
@@ -3196,11 +3237,18 @@ void handle_movement(double dt) {
                 s->vz = nz * oppose;
             }
         }
-        // Update player position
-        player_pos_inv(bx, by, bz, &s->x, &s->y, &s->z);
+        // Set player position
+        s->x = bx;
+        s->y = by;
+        s->z = bz;
         // Update player damage
-        float stopping_damage = calc_frame_stopping_damage(dt, s->vx - vx0, s->vy - vy0, s->vz - vz0);
+        float stopping_damage = calc_frame_stopping_damage(
+                dt,
+                s->vx - vx0,
+                s->vy - vy0,
+                s->vz - vz0);
         if (stopping_damage) { add_player_damage(p, stopping_damage); }
+        return 1;
     }
     else {
         // There was no collision
@@ -3208,7 +3256,45 @@ void handle_movement(double dt) {
         s->x += s->vx * dt;
         s->y += s->vy * dt;
         s->z += s->vz * dt;
+        return 0;
     }
+}
+        
+
+// Player movement
+void handle_movement(
+        double dt)
+{
+    Player *p = &g->players[0];
+    State *s = &p->state;
+    const PhysicsConfig *phc = &g->physics;
+
+    int sz = 0, sx = 0;
+    if (!g->typing) {
+        input_get_keys_view();
+        input_get_keys_look(s, dt);
+        input_get_keys_walk(&sx, &sz);
+    }
+
+    // Get acceleration motion from the inputs
+    float ax=0, ay=0, az=0;
+    get_motion_vector(p->attrs.flying, sz, sx, s->rx, s->ry, &ax, &ay, &az);
+
+    // Handle jump/fly
+    if (!g->typing) {
+        ay = input_player_jump_or_fly(p);
+    }
+
+    // Add acceleration from input motion to velocity horizontal and vertical speed
+    add_velocity(&s->vx, &s->vy, &s->vz, ax, ay, az, dt, p->attrs.flying, phc);
+
+    // Apply gravity and enforce limits on velocity
+    constrain_velocity(
+            &s->vx, &s->vy, &s->vz,
+            dt, p->attrs.flying, p->attrs.is_grounded, phc);
+
+    handle_dynamic_collision(p, dt);
+
     // Make sure position does not go below the world
     if (s->y < 0) {
         s->vy = 0;
@@ -3477,27 +3563,30 @@ int box_intersect_world(
 
 // Sweep moving bounding box with all nearby blocks in the world. Returns the
 // info for the earliest intersection time.
-// Arguments:
-// - x, y, z: box center position
-// - ex, ey, ez: box extents
-// - vx, vy, vz: box velocity
-// - nx, ny, nz: pointers to output the normal vector to
-// - check_face: flag
 // Returns:
 // - earliest collision time, between 0.0 and 1.0
 // - writes values out to nx, ny, and nz
-// - if the returned time is 1.0, then the normal vector may not be initialized
 float box_sweep_world(
-        float x, float y, float z, float ex, float ey, float ez,
-        float vx, float vy, float vz, float *nx, float *ny, float *nz)
+        float x,        // box center x
+        float y,        // box center y
+        float z,        // box center z
+        float ex,       // box extent x
+        float ey,       // box extent y
+        float ez,       // box extent z
+        float vx,       // box velocity x
+        float vy,       // box velocity y
+        float vz,       // box velocity z
+        float *nx,      // collision normal x
+        float *ny,      // collision normal y
+        float *nz)      // collision normal z
 {
     // Default result
     *nx = *ny = *nz = 0;
     float t = 1.0;
+
     // No velocity -> no collision
-    if (vx == 0 && vy == 0 && vz == 0) {
-        return t;
-    }
+    if (vx == 0 && vy == 0 && vz == 0) { return t; }
+
     float bbx, bby, bbz, bbex, bbey, bbez;
     box_broadphase(
             x, y, z, ex, ey, ez, vx, vy, vz, &bbx, &bby, &bbz,
@@ -3508,6 +3597,7 @@ float box_sweep_world(
     cx = roundf(x);
     cy = roundf(y);
     cz = roundf(z);
+    
     // All possible surrounding blocks
     int x0, y0, z0, x1, y1, z1;
     box_nearest_blocks(
@@ -3516,14 +3606,10 @@ float box_sweep_world(
         for (int by = y0; by <= y1; by++) {
             for (int bz = z0; bz <= z1; bz++) {
                 // Skip the current block
-                if (bx == cx && by == cy && bz == cz) {
-                    continue;
-                }
+                if (bx == cx && by == cy && bz == cz) { continue; }
                 // Only collide with obstacle blocks
                 int w = get_block(bx, by, bz);
-                if (!is_obstacle(w)) {
-                    continue;
-                }
+                if (!is_obstacle(w)) { continue; }
                 // Box must intersect the broad-phase bounding box
                 if (!box_intersect_block(bbx, bby, bbz, bbex, bbey, bbez, bx, by, bz)) {
                     continue;
@@ -3557,11 +3643,11 @@ float box_sweep_world(
     return t;
 }
 
-// Linear function: damage(d_vel) = a + b * d_vel if d_vel > min
+// Linear function: damage(d_vel) = a + b * d_vel IF d_vel > min
 float calc_damage_from_impulse(float d_vel) {
-    float min_impulse_damage = g->physics.min_impulse_damage;
-    float impulse_damage_min = g->physics.min_impulse_damage;
-    float impulse_damage_scale = g->physics.impulse_damage_scale;
+    const float min_impulse_damage = g->physics.min_impulse_damage;
+    const float impulse_damage_min = g->physics.min_impulse_damage;
+    const float impulse_damage_scale = g->physics.impulse_damage_scale;
     if (d_vel < min_impulse_damage) { return 0; }
     return roundf(impulse_damage_min + impulse_damage_scale * d_vel);
 }

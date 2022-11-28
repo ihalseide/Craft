@@ -35,27 +35,6 @@ void player_hitbox(
 }
 
 
-// Player position inverse. Set player position from hitbox center point
-// (inverse of player_hitbox()).
-// Arguments:
-// - x, y, z: hitbox position to convert into player position
-// - px, py, pz: pointer to player position to modify
-// Returns:
-// - modifies values pointed to by px, py, and pz
-void player_pos_inv(
-        float x,
-        float y,
-        float z,
-        float *px,
-        float *py,
-        float *pz)
-{
-    *px = x;
-    *py = y + PLAYER_HEADY + (PLAYER_HEIGHT / 2.0);
-    *pz = z;
-}
-
-
 // Set the current player state to interpolate between the previous known states
 void interpolate_player(Player *player) {
     State *s1 = &player->state1;

@@ -1,8 +1,9 @@
-#include <string.h>
 #include "db.h"
 #include "ring.h"
 #include "sqlite3.h"
 #include "tinycthread.h"
+#include <stdio.h>
+#include <string.h>
 
 // Database code to save and load worlds.
 // Only player-made changes from the original generated world are saved in the db.
@@ -55,7 +56,7 @@ int get_db_enabled() { return db_enabled; }
 
 // Just used to print an error message within db_init
 static int bail(int rc) {
-    printf("sqlite database error: %s\n", sqlite3_errmsg(db));
+    fprintf(stderr, "sqlite database error: %s\n", sqlite3_errmsg(db));
     return rc;
 }
 
@@ -209,7 +210,7 @@ int db_init(char *path) {
     if (rc) { return bail(rc); }
 
     sqlite3_exec(db, "begin;", NULL, NULL, NULL);
-    db_worker_start();
+    db_worker_start(NULL);
     return 0;
 }
 
@@ -707,6 +708,7 @@ static void _db_set_key(int p, int q, int key) {
     sqlite3_step(set_key_stmt);
 }
 
+
 // Start a worker with the database
 // Arguments:
 // - path: argument to pass to the worker
@@ -719,6 +721,7 @@ void db_worker_start(char *path) {
     cnd_init(&cnd);
     thrd_create(&thrd, db_worker_run, path);
 }
+
 
 // Stop workers from using the database.
 // Arguments: none

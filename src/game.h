@@ -46,80 +46,46 @@ enum {
 
 
 // Physiscs settings
-// - grav: gravity
-// - walksp: walking speed (horizontal)
-// - flysp: flying speed
-// - jumpaccel: accelaration to apply when the player jumps (vertical)
-// - flyr: flying resistance factor
-// - groundr: ground resistance factor when walking on ground (horizontal)
-// - airhr: air resistance horizontal factor when walking through air
-// - airvr: air resistance vertical factor when jumping/falling
-// - jumpcool: cool-down time between jumps
-// - blockcool: cool-down time between placing blocks by any means
-// - dblockcool: cool-down time between destroying blocks by any means
-//   down the button
-// - min_impulse_damage: minimum velocity change required to take damage
 typedef struct {
-    float grav;
-    float walksp;
-    float flysp;
-    float jumpaccel;
-    float flyr;
-    float groundr;
-    float airhr;
-    float airvr;
-    float jumpcool;
-    float blockcool;
-    float dblockcool;
-    float min_impulse_damage;
-    float impulse_damage_min;
-    float impulse_damage_scale;
+    float grav;                   // gravity
+    float walksp;                 // walking speed
+    float flysp;                  // flying speed
+    float jumpaccel;              // jump vertical power or acceleration
+    float flyr;                   // flying movement resistance
+    float groundr;                // ground horizontal resistance factor
+    float airhr;                  // air horizontal resistance factor
+    float airvr;                  // air vertical resistance factor
+    float jumpcool;               // jump cool-down time
+    float blockcool;              // block placing cool-down time
+    float dblockcool;             // block destroying cool-down time
+    float min_impulse_damage;     // minimum velocity change required to take damage
+    float impulse_damage_min;     // base damage dealt with velocity change exceeding the limit above
+    float impulse_damage_scale;   // damage multiplier for velocity change exceeding the limit above
 } PhysicsConfig;
 
 
 // World chunk data (big area of blocks)
-// - map: block hash map
-// - lights: light hash map
-// - signs: signs in this chunk
-// - p: chunk x coordinate
-// - q: chunk z coordinate
-// - faces: number of faces
-// - sign_faces: number of sign face
-// - dirty: dirty flag
-// - miny: minimum Y value held by any block
-// - maxy: maximum Y value held by any block
-// - buffer:
-// - sign_buffer:
 typedef struct {
-    Map map;    // block types
-    Map lights; // block lights
-    Map damage; // block damage
-    SignList signs;
-    int p;
-    int q;
-    int faces;
-    int sign_faces;
-    int dirty;
-    int miny;
-    int maxy;
+    Map map;         // block types
+    Map lights;      // block lights
+    Map damage;      // block damage
+    SignList signs;  // signs in the chunk
+    int p;           // chunk X
+    int q;           // chunk Z
+    int faces;       // number of block faces
+    int sign_faces;  // number of sign faces
+    int dirty;       // flag
+    int miny;        // minimum Y value held by any block
+    int maxy;        // maximum Y value held by any block
     GLuint buffer;
     GLuint sign_buffer;
 } Chunk;
 
 
 // A single item that a Worker can work on
-// - p: chunk x coordinate
-// - q: chunk y coordinate
-// - load
-// - block_maps
-// - light_maps
-// - miny
-// - maxy
-// - faces
-// - data
 typedef struct {
-    int p;
-    int q;
+    int p;                   // chunked X
+    int q;                   // chunked Z
     int load;
     Map *block_maps[3][3];
     Map *light_maps[3][3];
@@ -131,19 +97,12 @@ typedef struct {
 } WorkerItem;
 
 
-// Worker data (for multi-threading)
-// - index:
-// - state:
-// - thrd: thread
-// - mtx: mutex
-// - cnd: condition variable
-// - item:
 typedef struct {
     int index;
     int state;
-    thrd_t thrd;
-    mtx_t mtx;
-    cnd_t cnd;
+    thrd_t thrd;      // thread
+    mtx_t mtx;        // mutex
+    cnd_t cnd;        // condition
     WorkerItem item;
 } Worker;
 
@@ -191,23 +150,12 @@ typedef struct {
 
 
 // - active: flag for whether the box is active
-// - x: box center x
-// - y: box center y
-// - z: box center z
-// - ex: box extent x
-// - ey: box extent y
-// - ez: box extent z
 // - buffer: opengl points model
 typedef struct
 {
     int active;
-    float x;
-    float y;
-    float z;
-    float ex;
-    float ey;
-    float ez;
     GLuint buffer;
+    Box box;
 } DebugBox;
 
 
@@ -337,7 +285,8 @@ int add_block_damage(int x,
 void add_message(
         const char *text);
 
-void array(Block *b1,
+void array(
+        Block *b1,
         Block *b2,
         int xc,
         int yc,
@@ -850,6 +799,15 @@ void unset_sign_face(
 int worker_run(
         void *arg);
 
+void input_get_keys_view();
+
+void input_get_keys_look(
+        State *s,
+        float dt);
+
+void input_get_keys_walk(
+        int *sx,
+        int *sz);
+
 
 #endif /*_game_h_*/
-

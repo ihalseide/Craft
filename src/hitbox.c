@@ -1,11 +1,13 @@
-#include <assert.h>
-#include <math.h>
-#include <limits.h>
-#include "util.h"
 #include "hitbox.h"
+#include "util.h"
+#include <assert.h>
+#include <limits.h>
+#include <math.h>
+
 
 // Extent of a unit cube
 #define CUBE_EXTENT 0.5
+
 
 /* Collision functions for boxes.
  * A "box" is a 3-dimensional axis-aligned bounding box, which is described by
@@ -15,15 +17,21 @@
  * along the corresponding axis.
  */
 
+
 // Round bounding box to nearest block position start and end
-// Arguments:
-// - x, y, z: box center
-// - ex, ey, ez: box extent
-// - x0, y0, z0: minimum block position output
-// - x1, y1, z1: maximum block position output
 void box_nearest_blocks(
-        float x, float y, float z, float ex, float ey, float ez,
-        int *x0, int *y0, int *z0, int *x1, int *y1, int *z1)
+        float x,          // box center x,y,z
+        float y,
+        float z,
+        float ex,          // box extent x,y,z
+        float ey,
+        float ez,
+        int *x0,          // minimum position x,y,z
+        int *y0,
+        int *z0,
+        int *x1,          // maximum position x,y,z
+        int *y1,
+        int *z1)
 {
     *x0 = (int)floorf(x - ex);
     *y0 = (int)floorf(y - ey);
@@ -33,33 +41,38 @@ void box_nearest_blocks(
     *z1 = (int)ceilf(z + ez);
 }
 
+
 // Swept collision of a moving box A with a static box B.
-// Arguments:
-// - ax, ay, az: center position for box A
-// - aex, aey, aez: extent of box A
-// - bx, by, bz: center position for box B
-// - bex, bey, bez: extent of box B
-// - vx, vy, vz: velocity of box A
-// - nx, ny, nz: normal vector output
-// Returns:
-// - returns the normal vector direction of the box face that was collided with
+// Returns
+// - writes out the normal vector direction of the box face that was collided with
 // - value between 0.0 and 1.0 to indicate the collision time
 //   (1.0 means no collision)
 float box_sweep_box(
-        float ax, float ay, float az, float aex, float aey, float aez,
-        float bx, float by, float bz, float bex, float bey, float bez,
-        float vx, float vy, float vz,
-        float *nx, float *ny, float *nz)
+        float ax,     // box A center x,y,z
+        float ay,
+        float az,
+        float aex,    // box A extent x,y,z
+        float aey,
+        float aez,
+        float bx,     // box B center x,y,z
+        float by,
+        float bz,
+        float bex,    // box B extent x,y,z
+        float bey,
+        float bez,
+        float vx,     // box A velocity x,y,z
+        float vy,
+        float vz,
+        float *nx,    // [output pointer] normal vector x,y,z
+        float *ny,
+        float *nz)
 {
     // Default normals
     *nx = 0;
     *ny = 0;
     *nz = 0;
     // No velocity -> no collision
-    if (vx == 0 && vy == 0 && vz == 0)
-    {
-        return 1.0;
-    }
+    if (vx == 0 && vy == 0 && vz == 0) { return 1.0; }
 
     // xc is the x distance between the closest edges.
     // xf is the x distance between the furthest edges.
@@ -164,47 +177,30 @@ float box_sweep_box(
         // x is closest
         *ny = 0;
         *nz = 0;
-        if (xc < 0)
-        {
-            *nx = 1;
-        }
-        else
-        {
-            *nx = -1;
-        }
+        if (xc < 0) { *nx = 1; }
+        else { *nx = -1; }
     }
     else if (yEnterT > zEnterT)
     {
         // y is closest
         *nx = 0;
         *nz = 0;
-        if (yc < 0)
-        {
-            *ny = 1;
-        }
-        else
-        {
-            *ny = -1;
-        }
+        if (yc < 0) { *ny = 1; }
+        else { *ny = -1; }
     }
     else
     {
         // z is closest
         *nx = 0;
         *ny = 0;
-        if (zc < 0)
-        {
-            *nz = 1;
-        }
-        else
-        {
-            *nz = -1;
-        }
+        if (zc < 0) { *nz = 1; }
+        else { *nz = -1; }
     }
 
     // Collision time is the entry time
     return enterT;
 }
+
 
 // Get the swept collision info for a moving box intersecting a block
 // Arguments:
@@ -216,62 +212,87 @@ float box_sweep_box(
 // Returns:
 // - collision time between 0.0 and 1.0 (1.0 means no collision)
 float box_sweep_block(
-        float x, float y, float z, float ex, float ey, float ez,
-        int bx, int by, int bz, float vx, float vy, float vz,
-        float *nx, float *ny, float *nz)
+        float x,
+        float y,
+        float z,
+        float ex,
+        float ey,
+        float ez,
+        int bx,
+        int by,
+        int bz,
+        float vx,
+        float vy,
+        float vz,
+        float *nx,
+        float *ny,
+        float *nz)
 {
     const float n = CUBE_EXTENT;
     return box_sweep_box(
         x, y, z, ex, ey, ez, bx, by, bz, n, n, n, vx, vy, vz, nx, ny, nz);
 }
 
-// Get the broadphase box for a moving mox
-// Arguments:
-// - x, y, z: input center
-// - ex, ey, ez: input extent
-// - vx, vy, vz: velocity
-// - bx, by, bz: output box center
-// - bex, bey, bez: output box extent
-// Returns:
-// - modifies bx, by, bz, bex, bey, and bez
-void box_broadphase(
-        float x, float y, float z, float ex, float ey, float ez,
-        float vx, float vy, float vz, float *bx, float *by, float *bz,
-        float *bex, float *bey, float *bez)
+
+// Get the broadphase bounding box for a moving mox
+void box_broadphase(  // Modifies bx, by, bz, bex, bey, and bez
+        float x,      // box center x
+        float y,      // box center x
+        float z,      // box center x
+        float ex,     // box extent x
+        float ey,     // box extent x
+        float ez,     // box extent x
+        float vx,     // velocity x
+        float vy,     // velocity y
+        float vz,     // velocity z
+        float *bx,    // output box center x
+        float *by,    // output box center y
+        float *bz,    // output box center z
+        float *bex,   // output box extent x
+        float *bey,   // output box extent y
+        float *bez)   // output box extent z
 {
-    *bx = x + vx/2;
-    *by = y + vy/2;
-    *bz = z + vz/2;
-    *bex = ex + ABS(vx)/2;
-    *bey = ey + ABS(vy)/2;
-    *bez = ez + ABS(vz)/2;
+    *bx = x + vx / 2.0f;
+    *by = y + vy / 2.0f;
+    *bz = z + vz / 2.0f;
+    *bex = ex + ABS(vx) / 2.0f;
+    *bey = ey + ABS(vy) / 2.0f;
+    *bez = ez + ABS(vz) / 2.0f;
 }
 
+
 // Check if the two boxes A and B currently intersect.
-// Arguments:
-// - ax, ay, az: box A center
-// - aex, aey, aez: box A extent
-// - bx, by, bz: box B center
-// - bex, bey, bez: box B extent
-// Returns:
-// - boolean of whether they intersect
-int box_intersect_box(
-        float ax, float ay, float az, float aex, float aey, float aez,
-        float bx, float by, float bz, float bex, float bey, float bez)
+int box_intersect_box(  // Returns non-zero if the boxes intersect
+        float ax,       // box A center x
+        float ay,       // box A center y
+        float az,       // box A center z
+        float aex,      // box A extent x
+        float aey,      // box A extent y
+        float aez,      // box A extent z
+        float bx,       // box B center x
+        float by,       // box B center y
+        float bz,       // box B center z
+        float bex,      // box B extent x
+        float bey,      // box B extent y
+        float bez)      // box B extent z
 {
     return !((ax + aex < bx - bex) || (ax - aex > bx + bex) ||
              (ay + aey < by - bey) || (ay - aey > by + bey) ||
              (az + aez < bz - bez) || (az - aez > bz + bez));
 }
 
+
 // Check whether a bounding box interects a block position
-// Arguments:
-// - x, y, z: box center
-// - ex, ey, ez: box extent
-// - bx, by, bz: block position
-int box_intersect_block(
-        float x, float y, float z, float ex, float ey, float ez,
-        int bx, int by, int bz)
+int box_intersect_block(  // Returns non-zero if they intersect
+        float x,          // box center x
+        float y,          // box center y
+        float z,          // box center z
+        float ex,         // box extent x
+        float ey,         // box extent y
+        float ez,         // box extent z
+        int bx,           // block position x
+        int by,           // block position y
+        int bz)           // block position z
 {
     const float n = CUBE_EXTENT;
     return box_intersect_box(x, y, z, ex, ey, ez, bx, by, bz, n, n, n);

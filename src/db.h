@@ -135,7 +135,8 @@ void db_trim_block_damage(
 int db_worker_run(
         void *arg);
 
-void db_worker_start();
+void db_worker_start(
+        char *path);
 
 void db_worker_stop();
 
