@@ -313,7 +313,7 @@ static void make_player_limb(
         float y_top, 
         float z,
         float brx,
-        float angle_z,
+        float /*angle_z*/,
         const float ao[6][4],
         const float light[6][4])
 {

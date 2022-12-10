@@ -96,10 +96,12 @@ GLuint gen_player_buffer(
         float ry,
         float brx);
 
-void interpolate_player(
+void
+interpolate_player(
         Player *player);
 
-void update_player(
+void
+update_player(
         Player *player,
         float x,
         float y,
@@ -108,12 +110,8 @@ void update_player(
         float ry,
         int interpolate);
 
-
-void set_matrix_3d_player_camera(
-        float matrix[16],
-        const Player *p);
-
-float player_eye_y(
+float
+player_eye_y(
         float y);
 
 

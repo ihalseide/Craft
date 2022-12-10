@@ -745,7 +745,7 @@ void db_worker_stop() {
 // - arg: unused in this function
 // Returns:
 // - 0
-int db_worker_run(void *arg) {
+int db_worker_run(void * /*arg*/) {
     int running = 1;
     while (running) {
         RingEntry e;

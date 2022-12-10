@@ -24,11 +24,6 @@
 #include <string.h>
 
 
-// The main game state is kept here
-static Model model;
-Model *g = &model;
-
-
 // Convert a value in block space to chunk space
 // Arguments:
 // - x: block coordinate
@@ -46,7 +41,8 @@ int chunked(
 // Arguments: none
 // Returns:
 // - time value between 0.0 and 1.0
-float time_of_day()
+float time_of_day(
+        Model *g)
 {
     if (g->day_length <= 0) {
         return 0.5;
@@ -62,9 +58,10 @@ float time_of_day()
 // Arguments: none
 // Returns:
 // - daylight value
-float get_daylight()
+float get_daylight(
+        Model *g)
 {
-    float timer = time_of_day();
+    float timer = time_of_day(g);
     if (timer < 0.5) {
         float t = (timer - 0.25) * 100;
         return 1 / (1 + powf(2, -t));
@@ -80,7 +77,8 @@ float get_daylight()
 // Arguments: none
 // Returns:
 // - scale factor
-int get_scale_factor()
+int get_scale_factor(
+        Model *g)
 {
     int window_width, window_height;
     int buffer_width, buffer_height;
@@ -170,7 +168,8 @@ void get_motion_vector(
 // Arguments: none
 // Returns:
 // - OpenGL buffer handle
-GLuint gen_crosshair_buffer()
+GLuint gen_crosshair_buffer(
+        Model *g)
 {
     int x = g->width / 2;
     int y = g->height / 2;
@@ -574,6 +573,7 @@ void draw_player(
 // Returns:
 // - pointer to the player in the game model
 Player *find_player(
+        Model *g,
         int id)
 {
     for (int i = 0; i < g->player_count; i++) {
@@ -590,9 +590,10 @@ Player *find_player(
 // - id: id of the player to delete
 // Returns: none
 void delete_player(
+        Model *g,
         int id)
 {
-    Player *player = find_player(id);
+    Player *player = find_player(g, id);
     if (!player) {
         return;
     }
@@ -606,7 +607,9 @@ void delete_player(
 // Delete all of the current players
 // Arguments: none
 // Returns: none
-void delete_all_players()
+void
+delete_all_players(
+        Model *g)
 {
     for (int i = 0; i < g->player_count; i++) {
         Player *player = g->players + i;
@@ -660,7 +663,9 @@ float player_crosshair_distance(
 // Returns:
 // - the closest player that is in range and that the given player is looking
 //   near.
-Player *player_crosshair(
+Player *
+player_crosshair(
+        Model *g,
         Player *player)
 {
     Player *result = 0;
@@ -689,7 +694,9 @@ Player *player_crosshair(
 // - q: chunk z
 // Returns:
 // - chunk pointer
-Chunk *find_chunk(
+Chunk *
+find_chunk(
+        Model *g,
         int p,
         int q)
 {
@@ -731,6 +738,7 @@ int chunk_distance(
 // Returns:
 // - non-zero if the chunk is visible
 int chunk_visible(
+        Model *g,
         float planes[6][4],
         int p,
         int q,
@@ -784,6 +792,7 @@ int chunk_visible(
 // Returns:
 // - highest y value, or -1 if not found
 int highest_block(
+        Model *g,
         float x,
         float z)
 {
@@ -792,7 +801,7 @@ int highest_block(
     int nz = roundf(z);
     int p = chunked(x);
     int q = chunked(z);
-    Chunk *chunk = find_chunk(p, q);
+    Chunk *chunk = find_chunk(g, p, q);
     if (chunk) {
         Map *map = &chunk->map;
         MAP_FOR_EACH(map, ex, ey, ez, ew) {
@@ -875,7 +884,9 @@ int _hit_test(
 // - bz: pointer to output hit z position
 // Returns:
 // - the block type that was hit, returns 0 if no block was found
-int hit_test(
+int
+hit_test(
+        Model *g,
         int previous,
         float x,
         float y,
@@ -925,6 +936,7 @@ int hit_test(
 // Returns:
 // - non-zero if a face was hit
 int hit_test_face(
+        Model *g,
         Player *player,
         int *x,
         int *y,
@@ -933,10 +945,10 @@ int hit_test_face(
 {
     State *s = &player->state;
     float eye_y = player_eye_y(s->y);
-    int w = hit_test(0, s->x, eye_y, s->z, s->rx, s->ry, x, y, z);
+    int w = hit_test(g, 0, s->x, eye_y, s->z, s->rx, s->ry, x, y, z);
     if (is_obstacle(w)) {
         int hx, hy, hz;
-        hit_test(1, s->x, eye_y, s->z, s->rx, s->ry, &hx, &hy, &hz);
+        hit_test(g, 1, s->x, eye_y, s->z, s->rx, s->ry, &hx, &hy, &hz);
         int dx = hx - *x;
         int dy = hy - *y;
         int dz = hz - *z;
@@ -1106,6 +1118,7 @@ void gen_sign_buffer(
 // Returns:
 // - non-zero if the chunk has lights
 int has_lights(
+        Model *g,
         Chunk *chunk)
 {
     if (!SHOW_LIGHTS) {
@@ -1115,7 +1128,7 @@ int has_lights(
         for (int dq = -1; dq <= 1; dq++) {
             Chunk *other = chunk;
             if (dp || dq) {
-                other = find_chunk(chunk->p + dp, chunk->q + dq);
+                other = find_chunk(g, chunk->p + dp, chunk->q + dq);
             }
             if (!other) {
                 continue;
@@ -1134,13 +1147,14 @@ int has_lights(
 // Arguments:
 // - chunk: chunk to mark as dirty
 void dirty_chunk(
+        Model *g,
         Chunk *chunk)
 {
     chunk->dirty = 1;
-    if (has_lights(chunk)) {
+    if (has_lights(g, chunk)) {
         for (int dp = -1; dp <= 1; dp++) {
             for (int dq = -1; dq <= 1; dq++) {
-                Chunk *other = find_chunk(chunk->p + dp, chunk->q + dq);
+                Chunk *other = find_chunk(g, chunk->p + dp, chunk->q + dq);
                 if (other) {
                     other->dirty = 1;
                 }
@@ -1461,6 +1475,7 @@ void generate_chunk(
 // - chunk
 // Returns: none
 void gen_chunk_buffer(
+        Model *g,
         Chunk *chunk)
 {
     WorkerItem _item;
@@ -1471,7 +1486,7 @@ void gen_chunk_buffer(
         for (int dq = -1; dq <= 1; dq++) {
             Chunk *other = chunk;
             if (dp || dq) {
-                other = find_chunk(chunk->p + dp, chunk->q + dq);
+                other = find_chunk(g, chunk->p + dp, chunk->q + dq);
             }
             if (other) {
                 item->block_maps[dp + 1][dq + 1] = &other->map;
@@ -1552,6 +1567,7 @@ void request_chunk(
 // - q
 // Returns: none
 void init_chunk(
+        Model *g,
         Chunk *chunk,
         int p,
         int q)
@@ -1562,7 +1578,7 @@ void init_chunk(
     chunk->sign_faces = 0;
     chunk->buffer = 0;
     chunk->sign_buffer = 0;
-    dirty_chunk(chunk);
+    dirty_chunk(g, chunk);
     SignList *signs = &chunk->signs;
     sign_list_alloc(signs, 16);
     db_load_signs(signs, p, q);
@@ -1584,11 +1600,12 @@ void init_chunk(
 // - q
 // Returns: none
 void create_chunk(
+        Model *g,
         Chunk *chunk,
         int p,
         int q)
 {
-    init_chunk(chunk, p, q);
+    init_chunk(g, chunk, p, q);
 
     WorkerItem _item;
     WorkerItem *item = &_item;
@@ -1606,7 +1623,8 @@ void create_chunk(
 // Delete the chunks that should be deleted (because they are out of range)
 // Arguments: none
 // Returns: none
-void delete_chunks()
+void delete_chunks(
+        Model *g)
 {
     int count = g->chunk_count;
     State *s1 = &g->players->state;
@@ -1645,7 +1663,8 @@ void delete_chunks()
 // Delete all chunk data
 // Arguments: none
 // Returns: none
-void delete_all_chunks()
+void delete_all_chunks(
+        Model *g)
 {
     for (int i = 0; i < g->chunk_count; i++) {
         Chunk *chunk = g->chunks + i;
@@ -1661,14 +1680,15 @@ void delete_all_chunks()
 
 // Arguments: none
 // Returns: none
-void check_workers()
+void check_workers(
+        Model *g)
 {
     for (int i = 0; i < WORKERS; i++) {
         Worker *worker = g->workers + i;
         mtx_lock(&worker->mtx);
         if (worker->state == WORKER_DONE) {
             WorkerItem *item = &worker->item;
-            Chunk *chunk = find_chunk(item->p, item->q);
+            Chunk *chunk = find_chunk(g, item->p, item->q);
             if (chunk) {
                 if (item->load) {
                     Map *block_map = item->block_maps[1][1];
@@ -1719,6 +1739,7 @@ void check_workers()
 // - player: player to generate chunks for
 // Returns: none
 void force_chunks(
+        Model *g,
         Player *player)
 {
     State *s = &player->state;
@@ -1729,16 +1750,16 @@ void force_chunks(
         for (int dq = -r; dq <= r; dq++) {
             int a = p + dp;
             int b = q + dq;
-            Chunk *chunk = find_chunk(a, b);
+            Chunk *chunk = find_chunk(g, a, b);
             if (chunk) {
                 if (chunk->dirty) {
-                    gen_chunk_buffer(chunk);
+                    gen_chunk_buffer(g, chunk);
                 }
             }
             else if (g->chunk_count < MAX_CHUNKS) {
                 chunk = g->chunks + g->chunk_count++;
-                create_chunk(chunk, a, b);
-                gen_chunk_buffer(chunk);
+                create_chunk(g, chunk, a, b);
+                gen_chunk_buffer(g, chunk);
             }
         }
     }
@@ -1750,12 +1771,13 @@ void force_chunks(
 // - worker
 // Returns: none
 void ensure_chunks_worker(
+        Model *g,
         Player *player,
         Worker *worker)
 {
     State *s = &player->state;
     float matrix[16];
-    set_matrix_3d_player_camera(matrix, player);
+    set_matrix_3d_player_camera(g, matrix, player);
     float planes[6][4];
     frustum_planes(planes, g->render_radius, matrix);
     int p = chunked(s->x);
@@ -1773,12 +1795,12 @@ void ensure_chunks_worker(
             if (index != worker->index) {
                 continue;
             }
-            Chunk *chunk = find_chunk(a, b);
+            Chunk *chunk = find_chunk(g, a, b);
             if (chunk && !chunk->dirty) {
                 continue;
             }
             int distance = MAX(ABS(dp), ABS(dq));
-            int invisible = !chunk_visible(planes, a, b, 0, 256);
+            int invisible = !chunk_visible(g, planes, a, b, 0, 256);
             int priority = 0;
             if (chunk) {
                 priority = chunk->buffer && chunk->dirty;
@@ -1797,12 +1819,12 @@ void ensure_chunks_worker(
     int a = best_a;
     int b = best_b;
     int load = 0;
-    Chunk *chunk = find_chunk(a, b);
+    Chunk *chunk = find_chunk(g, a, b);
     if (!chunk) {
         load = 1;
         if (g->chunk_count < MAX_CHUNKS) {
             chunk = g->chunks + g->chunk_count++;
-            init_chunk(chunk, a, b);
+            init_chunk(g, chunk, a, b);
         }
         else {
             return;
@@ -1816,7 +1838,7 @@ void ensure_chunks_worker(
         for (int dq = -1; dq <= 1; dq++) {
             Chunk *other = chunk;
             if (dp || dq) {
-                other = find_chunk(chunk->p + dp, chunk->q + dq);
+                other = find_chunk(g, chunk->p + dp, chunk->q + dq);
             }
             if (other) {
                 Map *block_map = malloc(sizeof(Map));
@@ -1847,15 +1869,16 @@ void ensure_chunks_worker(
 // - player
 // Returns: none
 void ensure_chunks(
+        Model *g,
         Player *player)
 {
-    check_workers();
-    force_chunks(player);
+    check_workers(g);
+    force_chunks(g, player);
     for (int i = 0; i < WORKERS; i++) {
         Worker *worker = g->workers + i;
         mtx_lock(&worker->mtx);
         if (worker->state == WORKER_IDLE) {
-            ensure_chunks_worker(player, worker);
+            ensure_chunks_worker(g, player, worker);
         }
         mtx_unlock(&worker->mtx);
     }
@@ -1894,13 +1917,14 @@ int worker_run(
 // - z
 // Returns: none
 void unset_sign(
+        Model *g,
         int x,
         int y,
         int z)
 {
     int p = chunked(x);
     int q = chunked(z);
-    Chunk *chunk = find_chunk(p, q);
+    Chunk *chunk = find_chunk(g, p, q);
     if (chunk) {
         SignList *signs = &chunk->signs;
         if (sign_list_remove_all(signs, x, y, z)) {
@@ -1920,6 +1944,7 @@ void unset_sign(
 // - face
 // Returns: none
 void unset_sign_face(
+        Model *g,
         int x,
         int y,
         int z,
@@ -1927,7 +1952,7 @@ void unset_sign_face(
 {
     int p = chunked(x);
     int q = chunked(z);
-    Chunk *chunk = find_chunk(p, q);
+    Chunk *chunk = find_chunk(g, p, q);
     if (chunk) {
         SignList *signs = &chunk->signs;
         if (sign_list_remove(signs, x, y, z, face)) {
@@ -1948,7 +1973,9 @@ void unset_sign_face(
 // - text
 // - dirty
 // Returns: none
-void _set_sign(
+void
+_set_sign(
+        Model *g,
         int p,
         int q,
         int x,
@@ -1959,10 +1986,10 @@ void _set_sign(
         int dirty)
 {
     if (strlen(text) == 0) {
-        unset_sign_face(x, y, z, face);
+        unset_sign_face(g, x, y, z, face);
         return;
     }
-    Chunk *chunk = find_chunk(p, q);
+    Chunk *chunk = find_chunk(g, p, q);
     if (chunk) {
         SignList *signs = &chunk->signs;
         sign_list_add(signs, x, y, z, face, text);
@@ -1980,6 +2007,7 @@ void _set_sign(
 // - text
 // Returns: none
 void set_sign(
+        Model *g,
         int x,
         int y,
         int z,
@@ -1988,7 +2016,7 @@ void set_sign(
 {
     int p = chunked(x);
     int q = chunked(z);
-    _set_sign(p, q, x, y, z, face, text, 1);
+    _set_sign(g, p, q, x, y, z, face, text, 1);
     client_sign(x, y, z, face, text);
 }
 
@@ -1997,20 +2025,21 @@ void set_sign(
 // - x, y, z
 // Returns: none
 void toggle_light(
+        Model *g,
         int x,
         int y,
         int z)
 {
     int p = chunked(x);
     int q = chunked(z);
-    Chunk *chunk = find_chunk(p, q);
+    Chunk *chunk = find_chunk(g, p, q);
     if (chunk) {
         Map *map = &chunk->lights;
         int w = map_get(map, x, y, z) ? 0 : 15;
         map_set(map, x, y, z, w);
         db_insert_light(p, q, x, y, z, w);
         client_light(x, y, z, w);
-        dirty_chunk(chunk);
+        dirty_chunk(g, chunk);
     }
 }
 
@@ -2020,7 +2049,9 @@ void toggle_light(
 // - x, y, z
 // - w
 // Returns: none
-void set_light(
+void
+set_light(
+        Model *g,
         int p,
         int q,
         int x,
@@ -2028,11 +2059,11 @@ void set_light(
         int z,
         int w)
 {
-    Chunk *chunk = find_chunk(p, q);
+    Chunk *chunk = find_chunk(g, p, q);
     if (chunk) {
         Map *map = &chunk->lights;
         if (map_set(map, x, y, z, w)) {
-            dirty_chunk(chunk);
+            dirty_chunk(g, chunk);
             db_insert_light(p, q, x, y, z, w);
         }
     }
@@ -2049,6 +2080,7 @@ void set_light(
 // - dirty
 // Returns: none
 void _set_block(
+        Model *g,
         int p,
         int q,
         int x,
@@ -2057,12 +2089,12 @@ void _set_block(
         int w,
         int dirty)
 {
-    Chunk *chunk = find_chunk(p, q);
+    Chunk *chunk = find_chunk(g, p, q);
     if (chunk) {
         Map *map = &chunk->map;
         if (map_set(map, x, y, z, w)) {
             if (dirty) {
-                dirty_chunk(chunk);
+                dirty_chunk(g, chunk);
             }
             db_insert_block(p, q, x, y, z, w);
         }
@@ -2076,8 +2108,8 @@ void _set_block(
     }
     // If a block is removed, then remove any signs and light source from that block.
     if (w == 0 && chunked(x) == p && chunked(z) == q) {
-        unset_sign(x, y, z);
-        set_light(p, q, x, y, z, 0);
+        unset_sign(g, x, y, z);
+        set_light(g, p, q, x, y, z, 0);
     }
 }
 
@@ -2087,6 +2119,7 @@ void _set_block(
 // - w
 // Returns: none
 void set_block(
+        Model *g,
         int x,
         int y,
         int z,
@@ -2094,13 +2127,13 @@ void set_block(
 {
     int p = chunked(x);
     int q = chunked(z);
-    _set_block(p, q, x, y, z, w, 1);
+    _set_block(g, p, q, x, y, z, w, 1);
     for (int dx = -1; dx <= 1; dx++) {
         for (int dz = -1; dz <= 1; dz++) {
             if (dx == 0 && dz == 0) { continue; }
             if (dx && chunked(x + dx) == p) { continue; }
             if (dz && chunked(z + dz) == q) { continue; }
-            _set_block(p + dx, q + dz, x, y, z, -w, 1);
+            _set_block(g, p + dx, q + dz, x, y, z, -w, 1);
         }
     }
     client_block(x, y, z, w);
@@ -2113,6 +2146,7 @@ void set_block(
 // - w
 // Returns: none
 void record_block(
+        Model *g,
         int x,
         int y,
         int z,
@@ -2126,13 +2160,15 @@ void record_block(
 }
 
 
-Chunk *find_chunk_xyz(
+Chunk *
+find_chunk_xyz(
+        Model *g,
         int x,
         int z)
 {
     int p = chunked(x);
     int q = chunked(z);
-    return find_chunk(p, q);
+    return find_chunk(g, p, q);
 }
 
 
@@ -2141,22 +2177,25 @@ Chunk *find_chunk_xyz(
 // Returns:
 // - w (block type value)
 int get_block(
+        Model *g,
         int x,
         int y,
         int z)
 {
-    Chunk *chunk = find_chunk_xyz(x, z);
+    Chunk *chunk = find_chunk_xyz(g, x, z);
     if (!chunk) { return 0; }
     return map_get(&chunk->map, x, y, z);
 }
 
 
-int get_block_damage(
+int
+get_block_damage(
+        Model *g,
         int x,
         int y,
         int z)
 {
-    Chunk *chunk = find_chunk_xyz(x, z);
+    Chunk *chunk = find_chunk_xyz(g, x, z);
     if (!chunk) { return 0; }
     return map_get(&chunk->damage, x, y, z);
 }
@@ -2164,14 +2203,16 @@ int get_block_damage(
 
 // Returns whether a block was found
 // Output: 'w' and 'damage'
-int get_block_and_damage(
+int
+get_block_and_damage(
+        Model *g,
         int x,
         int y,
         int z,
         int *w,
         int *damage)
 {
-    Chunk *chunk = find_chunk_xyz(x, z);
+    Chunk *chunk = find_chunk_xyz(g, x, z);
     if (!chunk) { return 0; }
     if (w) { *w = map_get(&chunk->map, x, y, z); }
     if (damage) { *damage = map_get(&chunk->damage, x, y, z); }
@@ -2179,13 +2220,15 @@ int get_block_and_damage(
 }
 
 
-void set_block_damage(
+void
+set_block_damage(
+        Model *g,
         int x,
         int y,
         int z,
         int damage)
 {
-    Chunk *chunk = find_chunk_xyz(x, z);
+    Chunk *chunk = find_chunk_xyz(g, x, z);
     if (!chunk) { assert(0 && "no chunk!"); }
     map_set(&chunk->damage, x, y, z, damage);
     db_insert_block_damage(chunk->p, chunk->q, x, y, z, damage);
@@ -2194,17 +2237,19 @@ void set_block_damage(
 
 // Add damage to a block and destroy it if it exceeds the damage limit.
 // Returns non-zero if the block should destroyed
-int add_block_damage(
+int
+add_block_damage(
+        Model *g,
         int x,
         int y,
         int z,
         int damage)
 {
     int w, initial_damage;
-    if (!get_block_and_damage(x, y, z, &w, &initial_damage)) { return 0; }
+    if (!get_block_and_damage(g, x, y, z, &w, &initial_damage)) { return 0; }
     if (damage < block_get_min_damage_threshold(w)) { return 0; }
     int new_damage = initial_damage + damage;
-    set_block_damage(x, y, z, new_damage);
+    set_block_damage(g, x, y, z, new_damage);
     return new_damage >= block_get_max_damage(w);
 }
 
@@ -2213,18 +2258,20 @@ int add_block_damage(
 // - x, y, z
 // - w
 // Returns: none
-void builder_block(
+void
+builder_block(
+        Model *g,
         int x,
         int y,
         int z,
         int w)
 {
     if (y <= 0 || y >= 256) { return; }
-    if (is_destructable(get_block(x, y, z))) {
-        set_block(x, y, z, 0);
+    if (is_destructable(get_block(g, x, y, z))) {
+        set_block(g, x, y, z, 0);
     }
     if (w) {
-        set_block(x, y, z, w);
+        set_block(g, x, y, z, w);
     }
 }
 
@@ -2235,18 +2282,19 @@ void builder_block(
 // Returns:
 // - number of faces
 int render_chunks(
+        Model *g,
         Attrib *attrib,
         Player *player)
 {
     int result = 0;
     State *s = &player->state;
     float eye_y = player_eye_y(s->y);
-    ensure_chunks(player);
+    ensure_chunks(g, player);
     int p = chunked(s->x);
     int q = chunked(s->z);
-    float light = get_daylight();
+    float light = get_daylight(g);
     float matrix[16];
-    set_matrix_3d_player_camera(matrix, player);
+    set_matrix_3d_player_camera(g, matrix, player);
     float planes[6][4];
     frustum_planes(planes, g->render_radius, matrix);
     glUseProgram(attrib->program);
@@ -2257,13 +2305,13 @@ int render_chunks(
     glUniform1f(attrib->extra2, light);
     glUniform1f(attrib->extra3, g->render_radius * CHUNK_SIZE);
     glUniform1i(attrib->extra4, g->ortho);
-    glUniform1f(attrib->timer, time_of_day());
+    glUniform1f(attrib->timer, time_of_day(g));
     for (int i = 0; i < g->chunk_count; i++) {
         Chunk *chunk = g->chunks + i;
         if (chunk_distance(chunk, p, q) > g->render_radius) {
             continue;
         }
-        if (!chunk_visible(planes, chunk->p, chunk->q, chunk->miny, chunk->maxy)) {
+        if (!chunk_visible(g, planes, chunk->p, chunk->q, chunk->miny, chunk->maxy)) {
             continue;
         }
         draw_chunk(attrib, chunk);
@@ -2277,7 +2325,9 @@ int render_chunks(
 // - attrib
 // - player
 // Returns: none
-void render_signs(
+void
+render_signs(
+        Model *g,
         Attrib *attrib,
         Player *player)
 {
@@ -2285,7 +2335,7 @@ void render_signs(
     int p = chunked(s->x);
     int q = chunked(s->z);
     float matrix[16];
-    set_matrix_3d_player_camera(matrix, player);
+    set_matrix_3d_player_camera(g, matrix, player);
     float planes[6][4];
     frustum_planes(planes, g->render_radius, matrix);
     glUseProgram(attrib->program);
@@ -2298,7 +2348,7 @@ void render_signs(
             continue;
         }
         if (!chunk_visible(
-                    planes, chunk->p, chunk->q, chunk->miny, chunk->maxy))
+                    g, planes, chunk->p, chunk->q, chunk->miny, chunk->maxy))
         {
             continue;
         }
@@ -2311,7 +2361,9 @@ void render_signs(
 // - attrib
 // - player
 // Returns: none
-void render_sign(
+void
+render_sign(
+        Model *g,
         Attrib *attrib,
         Player *player)
 {
@@ -2319,11 +2371,11 @@ void render_sign(
         return;
     }
     int x, y, z, face;
-    if (!hit_test_face(player, &x, &y, &z, &face)) {
+    if (!hit_test_face(g, player, &x, &y, &z, &face)) {
         return;
     }
     float matrix[16];
-    set_matrix_3d_player_camera(matrix, player);
+    set_matrix_3d_player_camera(g, matrix, player);
     glUseProgram(attrib->program);
     glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
     glUniform1i(attrib->sampler, 3);
@@ -2340,19 +2392,21 @@ void render_sign(
 
 
 // Render the other players for the given player
-void render_players(
+void
+render_players(
+        Model *g,
         Attrib *attrib,
         Player *player)
 {
     State *s = &player->state;
     float eye_y = player_eye_y(s->y);
     float matrix[16];
-    set_matrix_3d_player_camera(matrix, player);
+    set_matrix_3d_player_camera(g, matrix, player);
     glUseProgram(attrib->program);
     glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
     glUniform3f(attrib->camera, s->x, eye_y, s->z);
     glUniform1i(attrib->sampler, 0);
-    glUniform1f(attrib->timer, time_of_day());
+    glUniform1f(attrib->timer, time_of_day(g));
     for (int i = 0; i < g->player_count; i++) {
         Player *other = g->players + i;
         if (other == player) { continue; }
@@ -2362,7 +2416,9 @@ void render_players(
 
 
 // Render the sky for the given player's perspective
-void render_sky(
+void
+render_sky(
+        Model *g,
         Attrib *attrib,
         Player *player,
         GLuint buffer)
@@ -2375,22 +2431,24 @@ void render_sky(
     glUseProgram(attrib->program);
     glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
     glUniform1i(attrib->sampler, 2);
-    glUniform1f(attrib->timer, time_of_day());
+    glUniform1f(attrib->timer, time_of_day(g));
     draw_triangles_3d(attrib, buffer, 512 * 3);
 }
 
 
 // Render the wireframe of the selected block for the player
-void render_wireframe(
+void
+render_wireframe(
+        Model *g,
         Attrib *attrib,
         Player *player)
 {
     State *s = &player->state;
     float eye_y = player_eye_y(s->y);
     float matrix[16];
-    set_matrix_3d_player_camera(matrix, player);
+    set_matrix_3d_player_camera(g, matrix, player);
     int hx, hy, hz;
-    int hw = hit_test(0, s->x, eye_y, s->z, s->rx, s->ry, &hx, &hy, &hz);
+    int hw = hit_test(g, 0, s->x, eye_y, s->z, s->rx, s->ry, &hx, &hy, &hz);
     if (is_obstacle(hw)) {
         glUseProgram(attrib->program);
         glLineWidth(1);
@@ -2405,7 +2463,9 @@ void render_wireframe(
 
 
 // Render the wireframe for a box
-void render_box_wireframe(
+void
+render_box_wireframe(
+        Model *g,
         Attrib *attrib,
         DebugBox *box,
         Player *p)
@@ -2414,7 +2474,7 @@ void render_box_wireframe(
     glUseProgram(attrib->program);
     float matrix[16];
     glLineWidth(3);
-    set_matrix_3d_player_camera(matrix, p);
+    set_matrix_3d_player_camera(g, matrix, p);
     glUseProgram(attrib->program);
     //glEnable(GL_COLOR_LOGIC_OP);
     glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
@@ -2429,7 +2489,9 @@ void render_box_wireframe(
 // - attrib
 // - p: given player
 // Returns: none
-void render_players_hitboxes(
+void
+render_players_hitboxes(
+        Model *g,
         Attrib *attrib,
         Player *p)
 {
@@ -2439,7 +2501,7 @@ void render_players_hitboxes(
         Player *other = g->players + i;
         if (other != p) {
             float matrix[16];
-            set_matrix_3d_player_camera(matrix, p);
+            set_matrix_3d_player_camera(g, matrix, p);
             glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
             State *os = &other->state;
             float ex, ey, ez;
@@ -2454,7 +2516,9 @@ void render_players_hitboxes(
 // Arguments:
 // - attrib
 // Returns: none
-void render_crosshairs(
+void
+render_crosshairs(
+        Model *g,
         Attrib *attrib)
 {
     float matrix[16];
@@ -2463,7 +2527,7 @@ void render_crosshairs(
     glLineWidth(4 * g->scale);
     glEnable(GL_COLOR_LOGIC_OP);
     glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
-    GLuint crosshair_buffer = gen_crosshair_buffer();
+    GLuint crosshair_buffer = gen_crosshair_buffer(g);
     draw_lines(attrib, crosshair_buffer, 2, 4);
     del_buffer(crosshair_buffer);
     glDisable(GL_COLOR_LOGIC_OP);
@@ -2472,7 +2536,9 @@ void render_crosshairs(
 // Arguments:
 // - attrib
 // Returns: none
-void render_item(
+void
+render_item(
+        Model *g,
         Attrib *attrib) 
 {
     float matrix[16];
@@ -2481,7 +2547,7 @@ void render_item(
     glUniformMatrix4fv(attrib->matrix, 1, GL_FALSE, matrix);
     glUniform3f(attrib->camera, 0, 0, 5);
     glUniform1i(attrib->sampler, 0);
-    glUniform1f(attrib->timer, time_of_day());
+    glUniform1f(attrib->timer, time_of_day(g));
     int w = items[g->item_index];
     if (is_plant(w)) {
         GLuint buffer = gen_plant_buffer(0, 0, 0, 0.5, w);
@@ -2503,7 +2569,9 @@ void render_item(
 // - n
 // - text
 // Returns: none
-void render_text(
+void
+render_text(
+        Model *g,
         Attrib *attrib,
         int justify,
         float x,
@@ -2527,7 +2595,9 @@ void render_text(
 // Arguments:
 // - text
 // Returns: none
-void add_message(
+void
+add_message(
+        Model *g,
         const char *text) 
 {
     printf("%s\n", text);
@@ -2564,7 +2634,9 @@ void login()
 
 
 // Player copies block
-void copy()
+void
+copy(
+        Model *g)
 {
     memcpy(&g->copy0, &g->block0, sizeof(Block));
     memcpy(&g->copy1, &g->block1, sizeof(Block));
@@ -2572,7 +2644,9 @@ void copy()
 
 
 // Player pastes structure
-void paste() 
+void
+paste(
+        Model *g) 
 {
     Block *c1 = &g->copy1;
     Block *c2 = &g->copy0;
@@ -2588,8 +2662,8 @@ void paste()
     for (int y = 0; y < 256; y++) {
         for (int x = 0; x <= dx; x++) {
             for (int z = 0; z <= dz; z++) {
-                int w = get_block(c1->x + x * scx, y, c1->z + z * scz);
-                builder_block(p1->x + x * spx, y + oy, p1->z + z * spz, w);
+                int w = get_block(g, c1->x + x * scx, y, c1->z + z * scz);
+                builder_block(g, p1->x + x * spx, y + oy, p1->z + z * spz, w);
             }
         }
     }
@@ -2603,7 +2677,9 @@ void paste()
 // - yc
 // - zc
 // Returns: none
-void array(
+void
+array(
+        Model *g,
         Block *b1,
         Block *b2,
         int xc,
@@ -2626,7 +2702,7 @@ void array(
             int y = b1->y + dy * j;
             for (int k = 0; k < zc; k++) {
                 int z = b1->z + dz * k;
-                builder_block(x, y, z, w);
+                builder_block(g, x, y, z, w);
             }
         }
     }
@@ -2638,7 +2714,9 @@ void array(
 // - b2
 // - fill
 // Returns: none
-void cube(
+void
+cube(
+        Model *g,
         Block *b1,
         Block *b2,
         int fill) 
@@ -2664,7 +2742,7 @@ void cube(
                         continue;
                     }
                 }
-                builder_block(x, y, z, w);
+                builder_block(g, x, y, z, w);
             }
         }
     }
@@ -2680,7 +2758,9 @@ void cube(
 // - fy
 // - fz
 // Returns: none
-void sphere(
+void
+sphere(
+        Model *g,
         Block *center,
         int radius,
         int fill,
@@ -2729,7 +2809,7 @@ void sphere(
                     }
                 }
                 if (inside && outside) {
-                    builder_block(x, y, z, w);
+                    builder_block(g, x, y, z, w);
                 }
             }
         }
@@ -2744,7 +2824,9 @@ void sphere(
 // - radius
 // - fill
 // Returns: none
-void cylinder(
+void
+cylinder(
+        Model *g,
         Block *b1,
         Block *b2,
         int radius,
@@ -2770,19 +2852,19 @@ void cylinder(
     if (fx) {
         for (int x = x1; x <= x2; x++) {
             block.x = x;
-            sphere(&block, radius, fill, 1, 0, 0);
+            sphere(g, &block, radius, fill, 1, 0, 0);
         }
     }
     if (fy) {
         for (int y = y1; y <= y2; y++) {
             block.y = y;
-            sphere(&block, radius, fill, 0, 1, 0);
+            sphere(g, &block, radius, fill, 0, 1, 0);
         }
     }
     if (fz) {
         for (int z = z1; z <= z2; z++) {
             block.z = z;
-            sphere(&block, radius, fill, 0, 0, 1);
+            sphere(g, &block, radius, fill, 0, 0, 1);
         }
     }
 }
@@ -2792,7 +2874,9 @@ void cylinder(
 // Arguments:
 // - block: a block to take the base block position from
 // Returns: none
-void tree(
+void
+tree(
+        Model *g,
         Block *block)
 {
     int bx = block->x;
@@ -2804,13 +2888,13 @@ void tree(
                 int dy = y - (by + 4);
                 int d = (dx * dx) + (dy * dy) + (dz * dz);
                 if (d < 11) {
-                    builder_block(bx + dx, y, bz + dz, 15);
+                    builder_block(g, bx + dx, y, bz + dz, 15);
                 }
             }
         }
     }
     for (int y = by; y < by + 7; y++) {
-        builder_block(bx, y, bz, 5);
+        builder_block(g, bx, y, bz, 5);
     }
 }
 
@@ -2836,7 +2920,9 @@ void tree(
 // - /fcirclex
 // - /fcircley
 // - /fcirclez
-void parse_command(
+void
+parse_command(
+        Model *g,
         const char *buffer,  // command string to parse
         int forward)         // flag about whether to forward the command as a chat message
 {
@@ -2849,19 +2935,19 @@ void parse_command(
     if (strcmp(buffer, "/ghost") == 0) {
         // spawn ghost
         Player *me = &g->players[0];
-        delete_ghost(me);
-        create_ghost(me);
-        add_message("Added ghost");
+        delete_ghost(g, me);
+        create_ghost(g, me);
+        add_message(g, "Added ghost");
     }
     else if (strcmp(buffer, "/noghost") == 0) {
         // remove ghost
         Player *me = &g->players[0];
-        delete_ghost(me);
-        add_message("Removed ghost");
+        delete_ghost(g, me);
+        add_message(g, "Removed ghost");
     }
     else if (sscanf(buffer, "/identity %128s %128s", username, token) == 2) {
         db_auth_set(username, token);
-        add_message("Successfully imported identity token!");
+        add_message(g, "Successfully imported identity token!");
         login();
     }
     else if (strcmp(buffer, "/logout") == 0) {
@@ -2873,7 +2959,7 @@ void parse_command(
             login();
         }
         else {
-            add_message("Unknown username.");
+            add_message(g, "Unknown username.");
         }
     }
     else if (sscanf(buffer,
@@ -2904,83 +2990,83 @@ void parse_command(
             g->delete_radius = radius + 4;
         }
         else {
-            add_message("Viewing distance must be between 1 and 24.");
+            add_message(g, "Viewing distance must be between 1 and 24.");
         }
     }
     else if (strcmp(buffer, "/copy") == 0) {
-        copy();
+        copy(g);
     }
     else if (strcmp(buffer, "/paste") == 0) {
-        paste();
+        paste(g);
     }
     else if (strcmp(buffer, "/tree") == 0) {
         // Place tree
-        tree(&g->block0);
+        tree(g, &g->block0);
     }
     else if (sscanf(buffer, "/array %d %d %d", &xc, &yc, &zc) == 3) {
-        array(&g->block1, &g->block0, xc, yc, zc);
+        array(g, &g->block1, &g->block0, xc, yc, zc);
     }
     else if (sscanf(buffer, "/array %d", &count) == 1) {
-        array(&g->block1, &g->block0, count, count, count);
+        array(g, &g->block1, &g->block0, count, count, count);
     }
     else if (strcmp(buffer, "/fcube") == 0) {
         // Place a filled cube
-        cube(&g->block0, &g->block1, 1);
+        cube(g, &g->block0, &g->block1, 1);
     }
     else if (strcmp(buffer, "/cube") == 0) {
         // Place an unfilled cube
-        cube(&g->block0, &g->block1, 0);
+        cube(g, &g->block0, &g->block1, 0);
     }
     else if (sscanf(buffer, "/fsphere %d", &radius) == 1) {
         // Place a filled sphere with a radius
-        sphere(&g->block0, radius, 1, 0, 0, 0);
+        sphere(g, &g->block0, radius, 1, 0, 0, 0);
     }
     else if (sscanf(buffer, "/sphere %d", &radius) == 1) {
         // Place an unfilled sphere with a radius
-        sphere(&g->block0, radius, 0, 0, 0, 0);
+        sphere(g, &g->block0, radius, 0, 0, 0, 0);
     }
     else if (sscanf(buffer, "/fcirclex %d", &radius) == 1) {
         // Place a filled circle on the x-axis with a radius
-        sphere(&g->block0, radius, 1, 1, 0, 0);
+        sphere(g, &g->block0, radius, 1, 1, 0, 0);
     }
     else if (sscanf(buffer, "/circlex %d", &radius) == 1) {
         // Place an unfilled circle on the x-axis with a radius
-        sphere(&g->block0, radius, 0, 1, 0, 0);
+        sphere(g, &g->block0, radius, 0, 1, 0, 0);
     }
     else if (sscanf(buffer, "/fcircley %d", &radius) == 1) {
         // Place a filled circle on the y-axis with a radius
-        sphere(&g->block0, radius, 1, 0, 1, 0);
+        sphere(g, &g->block0, radius, 1, 0, 1, 0);
     }
     else if (sscanf(buffer, "/circley %d", &radius) == 1) {
         // Place an unfilled circle on the y-axis with a radius
-        sphere(&g->block0, radius, 0, 0, 1, 0);
+        sphere(g, &g->block0, radius, 0, 0, 1, 0);
     }
     else if (sscanf(buffer, "/fcirclez %d", &radius) == 1) {
         // Place a filled circle on the z-axis with a radius
-        sphere(&g->block0, radius, 1, 0, 0, 1);
+        sphere(g, &g->block0, radius, 1, 0, 0, 1);
     }
     else if (sscanf(buffer, "/circlez %d", &radius) == 1) {
         // Place an unfilled circle on the z-axis with a radius
-        sphere(&g->block0, radius, 0, 0, 0, 1);
+        sphere(g, &g->block0, radius, 0, 0, 0, 1);
     }
     else if (sscanf(buffer, "/fcylinder %d", &radius) == 1) {
         // Place a filled cylinder with a radius
-        cylinder(&g->block0, &g->block1, radius, 1);
+        cylinder(g, &g->block0, &g->block1, radius, 1);
     }
     else if (sscanf(buffer, "/cylinder %d", &radius) == 1) {
         // Place an unfilled cylinder with a radius
-        cylinder(&g->block0, &g->block1, radius, 0);
+        cylinder(g, &g->block0, &g->block1, radius, 0);
     }
     else if (sscanf(buffer, "/damage %d", &radius) == 1) {
         char out[30];
         snprintf(out, sizeof(out), "set attack_damage=%d", radius);
-        add_message(out);
+        add_message(g, out);
         g->players[0].attrs.attack_damage = radius;
     }
     else if (sscanf(buffer, "/reach %d", &radius) == 1) {
         char out[30];
         snprintf(out, sizeof(out), "set reach=%d", radius);
-        add_message(out);
+        add_message(g, out);
         g->players[0].attrs.reach = radius;
     }
     else if (forward) {
@@ -2992,40 +3078,46 @@ void parse_command(
 
 // Arguments: none
 // Returns: none
-void on_light() 
+void
+on_light(
+        Model *g) 
 {
     State *s = &g->players->state;
     float y = player_eye_y(s->y);
     int hx, hy, hz;
-    int hw = hit_test(0, s->x, y, s->z, s->rx, s->ry, &hx, &hy, &hz);
+    int hw = hit_test(g, 0, s->x, y, s->z, s->rx, s->ry, &hx, &hy, &hz);
     if (hy > 0 && hy < 256 && is_destructable(hw)) {
-        toggle_light(hx, hy, hz);
+        toggle_light(g, hx, hy, hz);
     }
 }
 
 
 // Try to place a block where the player is looking and return success
-int place_block()
+int
+place_block(
+        Model *g)
 {
     State *s = &g->players->state;
     float y = player_eye_y(s->y);
     int hx, hy, hz;
-    int hw = hit_test(1, s->x, y, s->z, s->rx, s->ry, &hx, &hy, &hz);
+    int hw = hit_test(g, 1, s->x, y, s->z, s->rx, s->ry, &hx, &hy, &hz);
     if (!(hy > 0 && hy < 256 && is_obstacle(hw))) { return 0; }
     if (player_intersects_block(s->x, y, s->z, s->vx, s->vy, s->vz, hx, hy, hz)) { return 0; }
-    set_block(hx, hy, hz, items[g->item_index]);
-    record_block(hx, hy, hz, items[g->item_index]);
+    set_block(g, hx, hy, hz, items[g->item_index]);
+    record_block(g, hx, hy, hz, items[g->item_index]);
     return 1;
 }
 
 
 // Try to break a block where the player is looking and return success
-int break_block()
+int
+break_block(
+        Model *g)
 {
     State *s = &(g->players[0].state);
     float y = player_eye_y(s->y);
     int hx, hy, hz;
-    int hw = hit_test(0, s->x, y, s->z, s->rx, s->ry, &hx, &hy, &hz);
+    int hw = hit_test(g, 0, s->x, y, s->z, s->rx, s->ry, &hx, &hy, &hz);
 
     // Only break blocks that are in bounds and are destructable
     if (!(hy > 0 && hy < 256 && is_destructable(hw))) {
@@ -3034,35 +3126,39 @@ int break_block()
 
     int damage = g->players[0].attrs.attack_damage;
     //printf("doing %d damage\n", damage);
-    if (!add_block_damage(hx, hy, hz, damage)) { return 0; }
+    if (!add_block_damage(g, hx, hy, hz, damage)) { return 0; }
 
-    set_block(hx, hy, hz, 0);
-    record_block(hx, hy, hz, 0);
-    if (is_plant(get_block(hx, hy + 1, hz))) {
-        set_block(hx, hy + 1, hz, 0);
+    set_block(g, hx, hy, hz, 0);
+    record_block(g, hx, hy, hz, 0);
+    if (is_plant(get_block(g, hx, hy + 1, hz))) {
+        set_block(g, hx, hy + 1, hz, 0);
     }
     return 1;
 }
 
 
 // Destroy block on left click, which also has a cool-down time
-void on_left_click() 
+void
+on_left_click(
+        Model *g) 
 {
     float t = glfwGetTime();
     if (t - g->players[0].attrs.dblockt > g->physics.dblockcool) {
         g->players[0].attrs.dblockt = t;
-        break_block();
+        break_block(g);
     }
 }
 
 
 // Place block on left click, has a cool-down
-void on_right_click() 
+void
+on_right_click(
+        Model *g) 
 {
     PlayerAttributes *s = &g->players->attrs;
     float t = glfwGetTime();
     if (t - s->blockt > g->physics.blockcool) {
-        if (place_block()) {
+        if (place_block(g)) {
             s->blockt = t;
         }
     }
@@ -3071,12 +3167,14 @@ void on_right_click()
 
 // Arguments: none
 // Returns: none
-void on_middle_click() 
+void
+on_middle_click(
+        Model *g) 
 {
     State *s = &g->players->state;
     float y = player_eye_y(s->y);
     int hx, hy, hz;
-    int hw = hit_test(0, s->x, y, s->z, s->rx, s->ry, &hx, &hy, &hz);
+    int hw = hit_test(g, 0, s->x, y, s->z, s->rx, s->ry, &hx, &hy, &hz);
     for (int i = 0; i < item_count; i++) {
         if (items[i] == hw) {
             g->item_index = i;
@@ -3086,239 +3184,10 @@ void on_middle_click()
 }
 
 
-// Handle key press callback
-void on_key(
-        GLFWwindow *window,
-        int key,
-        int /*scancode*/,
-        int action,
-        int mods) 
-{
-    int control = mods & (GLFW_MOD_CONTROL | GLFW_MOD_SUPER);
-    int exclusive =
-        glfwGetInputMode(window, GLFW_CURSOR) == GLFW_CURSOR_DISABLED;
-    if (action == GLFW_RELEASE) {
-        return;
-    }
-    if (key == GLFW_KEY_BACKSPACE) {
-        if (g->typing) {
-            int n = strlen(g->typing_buffer);
-            if (n > 0) {
-                g->typing_buffer[n - 1] = '\0';
-            }
-        }
-    }
-    if (action != GLFW_PRESS) {
-        return;
-    }
-    if (key == GLFW_KEY_ESCAPE) {
-        if (g->typing) {
-            g->typing = 0;
-        }
-        else if (exclusive) {
-            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-        }
-    }
-    if (key == GLFW_KEY_ENTER) {
-        if (g->typing) {
-            if (mods & GLFW_MOD_SHIFT) {
-                int n = strlen(g->typing_buffer);
-                if (n < MAX_TEXT_LENGTH - 1) {
-                    g->typing_buffer[n] = '\r';
-                    g->typing_buffer[n + 1] = '\0';
-                }
-            }
-            else {
-                g->typing = 0;
-                if (g->typing_buffer[0] == CRAFT_KEY_SIGN) {
-                    Player *player = g->players;
-                    int x, y, z, face;
-                    if (hit_test_face(player, &x, &y, &z, &face)) {
-                        set_sign(x, y, z, face, g->typing_buffer + 1);
-                    }
-                }
-                else if (g->typing_buffer[0] == '/') {
-                    parse_command(g->typing_buffer, 1);
-                }
-                else {
-                    client_talk(g->typing_buffer);
-                }
-            }
-        }
-        else {
-            if (control) {
-                on_right_click();
-            }
-            else {
-                on_left_click();
-            }
-        }
-    }
-    if (control && key == 'V') {
-        const char *buffer = glfwGetClipboardString(window);
-        if (g->typing) {
-            g->suppress_char = 1;
-            strncat(g->typing_buffer, buffer,
-                    MAX_TEXT_LENGTH - strlen(g->typing_buffer) - 1);
-        }
-        else {
-            parse_command(buffer, 0);
-        }
-    }
-    if (!g->typing) {
-        if (key == CRAFT_KEY_FLY) {
-            PlayerAttributes *s = &g->players[0].attrs;
-            s->flying = !s->flying;
-        }
-        if (key >= '1' && key <= '9') {
-            g->item_index = key - '1';
-        }
-        if (key == '0') {
-            g->item_index = 9;
-        }
-        if (key == CRAFT_KEY_ITEM_NEXT) {
-            g->item_index = (g->item_index + 1) % item_count;
-        }
-        if (key == CRAFT_KEY_ITEM_PREV) {
-            g->item_index--;
-            if (g->item_index < 0) {
-                g->item_index = item_count - 1;
-            }
-        }
-        if (key == CRAFT_KEY_OBSERVE) {
-            g->observe1 = (g->observe1 + 1) % g->player_count;
-        }
-        if (key == CRAFT_KEY_OBSERVE_INSET) {
-            g->observe2 = (g->observe2 + 1) % g->player_count;
-        }
-    }
-}
-
-
-// Handle character callback
-void on_char(
-        GLFWwindow * /*window*/,
-        unsigned int u) 
-{
-    if (g->suppress_char) {
-        g->suppress_char = 0;
-        return;
-    }
-    if (g->typing) {
-        if (u >= 32 && u < 128) {
-            char c = (char)u;
-            int n = strlen(g->typing_buffer);
-            if (n < MAX_TEXT_LENGTH - 1) {
-                g->typing_buffer[n] = c;
-                g->typing_buffer[n + 1] = '\0';
-            }
-        }
-    }
-    else {
-        if (u == CRAFT_KEY_CHAT) {
-            g->typing = 1;
-            g->typing_buffer[0] = '\0';
-        }
-        if (u == CRAFT_KEY_COMMAND) {
-            g->typing = 1;
-            g->typing_buffer[0] = '/';
-            g->typing_buffer[1] = '\0';
-        }
-        if (u == CRAFT_KEY_SIGN) {
-            g->typing = 1;
-            g->typing_buffer[0] = CRAFT_KEY_SIGN;
-            g->typing_buffer[1] = '\0';
-        }
-    }
-}
-
-// Handle mouse scroll callback, scroll through block items
-void on_scroll(
-        GLFWwindow * /*window*/,  // window the thing happens in
-        double /*xdelta*/,        // change in x scroll
-        double ydelta)            // change in y scroll
-{
-    static double ypos = 0;
-    ypos += ydelta;
-    if (ypos < -SCROLL_THRESHOLD) {
-        g->item_index = (g->item_index + 1) % item_count;
-        ypos = 0;
-    }
-    if (ypos > SCROLL_THRESHOLD) {
-        g->item_index--;
-        if (g->item_index < 0) {
-            g->item_index = item_count - 1;
-        }
-        ypos = 0;
-    }
-}
-
-
-// Handle mouse button press callback
-void on_mouse_button(
-        GLFWwindow *window,
-        int button,
-        int action,
-        int mods) 
-{
-    int control = mods & (GLFW_MOD_CONTROL | GLFW_MOD_SUPER);
-    int exclusive =
-        glfwGetInputMode(window, GLFW_CURSOR) == GLFW_CURSOR_DISABLED;
-    if (action != GLFW_PRESS) {
-        return;
-    }
-    if (button == GLFW_MOUSE_BUTTON_LEFT) {
-        if (exclusive) {
-            // Control + left click simulates a right click
-            if (control) {
-                on_right_click();
-            }
-            else {
-                on_left_click();
-            }
-        }
-        else {
-            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-        }
-    }
-    if (button == GLFW_MOUSE_BUTTON_RIGHT) {
-        if (exclusive) {
-            if (control) {
-                on_light();
-            }
-            else {
-                on_right_click();
-            }
-        }
-    }
-    if (button == GLFW_MOUSE_BUTTON_MIDDLE) {
-        if (exclusive) {
-            on_middle_click();
-        }
-    }
-}
-
-// Arguments: none
-// Returns: none
-void create_window() 
-{
-    int window_width = WINDOW_WIDTH;
-    int window_height = WINDOW_HEIGHT;
-    GLFWmonitor *monitor = NULL;
-    if (FULLSCREEN) {
-        int mode_count;
-        monitor = glfwGetPrimaryMonitor();
-        const GLFWvidmode *modes = glfwGetVideoModes(monitor, &mode_count);
-        window_width = modes[mode_count - 1].width;
-        window_height = modes[mode_count - 1].height;
-    }
-    g->window = glfwCreateWindow(
-            window_width, window_height, "Miscraft", monitor, NULL);
-}
-
-
 // Move camera with mouse movement
-void handle_mouse_input() 
+void
+handle_mouse_input(
+        Model *g) 
 {
     int exclusive =
         glfwGetInputMode(g->window, GLFW_CURSOR) == GLFW_CURSOR_DISABLED;
@@ -3367,14 +3236,16 @@ void handle_mouse_input()
 }
 
 
-static float calc_frame_stopping_damage(
+static float
+calc_frame_stopping_damage(
+        Model *g,
         float dt,
         float dx,
         float dy,
         float dz) 
 {
     float mag = v3_mag(dx, dy, dz);
-    return calc_damage_from_impulse(mag * dt);
+    return calc_damage_from_impulse(g, mag * dt);
 }
 
 
@@ -3387,7 +3258,9 @@ static void add_player_damage(
 
 
 // Accesses the windown input to get the keys that change the view in special ways
-void input_get_keys_view()
+void
+input_get_keys_view(
+        Model *g)
 {
     g->ortho = glfwGetKey(g->window, CRAFT_KEY_ORTHO) ? 64 : 0;
     g->fov = glfwGetKey(g->window, CRAFT_KEY_ZOOM) ? 15 : 65;
@@ -3395,7 +3268,9 @@ void input_get_keys_view()
 
 
 // Accesses the window input to get keys that move player cursor
-void input_get_keys_look(
+void
+input_get_keys_look(
+        Model *g,
         State *s,           // player state to modify
         float dt)           // change in time (delta t)
 {
@@ -3408,7 +3283,9 @@ void input_get_keys_look(
 
 
 // Accesses the window input to get keys that walk the player
-void input_get_keys_walk(
+void
+input_get_keys_walk(
+        Model *g,
         int *sx,        // flag for strafe X [output pointer]
         int *sz)        // flag for strafe Y [output pointer]
 {
@@ -3420,7 +3297,9 @@ void input_get_keys_walk(
 
 
 // Get input and handle vertical movement when not flying
-float input_player_jump(
+float
+input_player_jump(
+        Model *g,
         Player *p)
 {
     if (!glfwGetKey(g->window, CRAFT_KEY_JUMP)) { return 0.0f; }
@@ -3436,7 +3315,9 @@ float input_player_jump(
 
 
 // Get input and handle vertical movement when flying
-float input_player_fly()
+float
+input_player_fly(
+        Model *g)
 {
     int jump = glfwGetKey(g->window, CRAFT_KEY_JUMP);
     int down = glfwGetKey(g->window, CRAFT_KEY_CROUCH);
@@ -3447,11 +3328,13 @@ float input_player_fly()
 
 
 // Handle jump or fly up/down
-float input_player_jump_or_fly(  // Returns vertical acceleration
+float
+input_player_jump_or_fly(  // Returns vertical acceleration
+        Model *g,
         Player *p)
 {
-    if (p->attrs.flying) { return input_player_fly(); }
-    else { return input_player_jump(p); }
+    if (p->attrs.flying) { return input_player_fly(g); }
+    else { return input_player_jump(g, p); }
 }
 
 
@@ -3521,9 +3404,11 @@ void constrain_velocity(
 
 
 // Handle a player's collision with blocks in `handle_movement`.
-int handle_dynamic_collision(  // Returns whether there was a collision or not
+int
+handle_dynamic_collision(  // Returns whether there was a collision or not
+        Model *g,
         Player *p,
-        float dt)              // delta time
+        float dt)          // delta time
 {
     State *s = &p->state;
 
@@ -3539,7 +3424,7 @@ int handle_dynamic_collision(  // Returns whether there was a collision or not
 
     // "t" = collision time relative to this frame (between 0.0 and 1.0)
     float t = box_sweep_world(
-            bx, by, bz, ex, ey, ez, s->vx * dt, s->vy * dt, s->vz * dt,
+            g, bx, by, bz, ex, ey, ez, s->vx * dt, s->vy * dt, s->vz * dt,
             &nx, &ny, &nz);
     if (0.0 <= t && t < 1.0) {
         // There was a collision
@@ -3551,7 +3436,7 @@ int handle_dynamic_collision(  // Returns whether there was a collision or not
         float vx0 = s->vx, vy0 = s->vy, vz0 = s->vz; // save original velocity for damage calculation
         for (int i = 0; i < steps; i++) {
             t = box_sweep_world(
-                    bx, by, bz, ex, ey, ez, s->vx * ut, s->vy * ut, s->vz * ut,
+                    g, bx, by, bz, ex, ey, ez, s->vx * ut, s->vy * ut, s->vz * ut,
                     &nx, &ny, &nz);
             // Move up to the collision moment
             bx += s->vx * t * ut;
@@ -3587,6 +3472,7 @@ int handle_dynamic_collision(  // Returns whether there was a collision or not
         s->z = bz;
         // Update player damage
         float stopping_damage = calc_frame_stopping_damage(
+                g,
                 dt,
                 s->vx - vx0,
                 s->vy - vy0,
@@ -3606,7 +3492,9 @@ int handle_dynamic_collision(  // Returns whether there was a collision or not
 
 
 // Player movement
-void handle_movement(
+void
+handle_movement(
+        Model *g,
         double dt)
 {
     Player *p = &g->players[0];
@@ -3615,9 +3503,9 @@ void handle_movement(
 
     int sz = 0, sx = 0;
     if (!g->typing) {
-        input_get_keys_view();
-        input_get_keys_look(s, dt);
-        input_get_keys_walk(&sx, &sz);
+        input_get_keys_view(g);
+        input_get_keys_look(g, s, dt);
+        input_get_keys_walk(g, &sx, &sz);
     }
 
     // Get acceleration motion from the inputs
@@ -3626,7 +3514,7 @@ void handle_movement(
 
     // Handle jump/fly
     if (!g->typing) {
-        ay = input_player_jump_or_fly(p);
+        ay = input_player_jump_or_fly(g, p);
     }
 
     // Add acceleration from input motion to velocity horizontal and vertical speed
@@ -3637,12 +3525,12 @@ void handle_movement(
             &s->vx, &s->vy, &s->vz,
             dt, p->attrs.flying, p->attrs.is_grounded, phc);
 
-    handle_dynamic_collision(p, dt);
+    handle_dynamic_collision(g, p, dt);
 
     // Make sure position does not go below the world
     if (s->y < 0) {
         s->vy = 0;
-        s->y = highest_block(s->x, s->z) + PLAYER_HEIGHT;
+        s->y = highest_block(g, s->x, s->z) + PLAYER_HEIGHT;
     }
 }
 
@@ -3668,7 +3556,9 @@ void handle_movement(
 // - T,s                   : "Talk". chat message "s"
 // - U,pid,x,y,z,rx,ry     : "You". Response to set this client's player
 //                           position (maybe upon joining the server?)
-void parse_buffer(
+void
+parse_buffer(
+        Model *g,
         char *buffer)
 {
     Player *me = g->players;
@@ -3684,33 +3574,33 @@ void parse_buffer(
         if (sscanf(line, "U,%d,%f,%f,%f,%f,%f",
                     &pid, &ux, &uy, &uz, &urx, &ury) == 6) {
             me->id = pid;
+            force_chunks(g, me);
             s->x = ux; s->y = uy; s->z = uz; s->rx = urx; s->ry = ury;
-            force_chunks(me);
             if (uy == 0) {
-                s->y = highest_block(s->x, s->z) + 2;
+                s->y = highest_block(g, s->x, s->z) + 2;
             }
         }
         // Block update
         int bp, bq, bx, by, bz, bw;
         if (sscanf(line, "B,%d,%d,%d,%d,%d,%d",
                     &bp, &bq, &bx, &by, &bz, &bw) == 6) {
-            _set_block(bp, bq, bx, by, bz, bw, 0);
+            _set_block(g, bp, bq, bx, by, bz, bw, 0);
             if (player_intersects_block(s->x, s->y, s->z, s->vx, s->vy, s->vz, bx, by, bz)) {
-                s->y = highest_block(s->x, s->z) + 2;
+                s->y = highest_block(g, s->x, s->z) + 2;
             }
         }
         // Light update
         if (sscanf(line, "L,%d,%d,%d,%d,%d,%d",
                     &bp, &bq, &bx, &by, &bz, &bw) == 6)
         {
-            set_light(bp, bq, bx, by, bz, bw);
+            set_light(g, bp, bq, bx, by, bz, bw);
         }
         // Player position update
         float px, py, pz, prx, pry;
         if (sscanf(line, "P,%d,%f,%f,%f,%f,%f",
                     &pid, &px, &py, &pz, &prx, &pry) == 6)
         {
-            Player *player = find_player(pid);
+            Player *player = find_player(g, pid);
             if (!player && g->player_count < MAX_PLAYERS) {
                 player = g->players + g->player_count;
                 g->player_count++;
@@ -3725,7 +3615,7 @@ void parse_buffer(
         }
         // Delete player id
         if (sscanf(line, "D,%d", &pid) == 1) {
-            delete_player(pid);
+            delete_player(g, pid);
         }
         // Chunk key
         int kp, kq, kk;
@@ -3734,9 +3624,9 @@ void parse_buffer(
         }
         // Dirty chunk
         if (sscanf(line, "R,%d,%d", &kp, &kq) == 2) {
-            Chunk *chunk = find_chunk(kp, kq);
+            Chunk *chunk = find_chunk(g, kp, kq);
             if (chunk) {
-                dirty_chunk(chunk);
+                dirty_chunk(g, chunk);
             }
         }
         // Time sync
@@ -3750,7 +3640,7 @@ void parse_buffer(
         // Chat message
         if (line[0] == 'T' && line[1] == ',') {
             char *text = line + 2;
-            add_message(text);
+            add_message(g, text);
         }
         char format[64];
         // Player name
@@ -3758,7 +3648,7 @@ void parse_buffer(
                 format, sizeof(format), "N,%%d,%%%ds", MAX_NAME_LENGTH - 1);
         char name[MAX_NAME_LENGTH];
         if (sscanf(line, format, &pid, name) == 2) {
-            Player *player = find_player(pid);
+            Player *player = find_player(g, pid);
             if (player) {
                 strncpy(player->name, name, MAX_NAME_LENGTH);
             }
@@ -3770,7 +3660,7 @@ void parse_buffer(
         int face;
         char text[MAX_SIGN_LENGTH] = {0};
         if (sscanf(line, format, &bp, &bq, &bx, &by, &bz, &face, text) >= 6) {
-            _set_sign(bp, bq, bx, by, bz, face, text, 0);
+            _set_sign(g, bp, bq, bx, by, bz, face, text, 0);
         }
         // Get next line
         line = tokenize(NULL, "\n", &key);
@@ -3804,7 +3694,9 @@ static void set_default_physics(
 // Returns:
 // - no return value
 // - modifies game model
-void reset_model()
+void
+reset_model(
+        Model *g)
 {
     memset(g->chunks, 0, sizeof(Chunk) * MAX_CHUNKS);
     g->chunk_count = 0;
@@ -3835,7 +3727,9 @@ int ghost_id(
 
 // DEBUG
 // Create a player model "ghost" for given player
-void create_ghost(
+void
+create_ghost(
+        Model *g,
         Player *p)
 {
     Player *player = g->players + g->player_count;
@@ -3851,11 +3745,13 @@ void create_ghost(
 }
 
 // DEBUG
-void delete_ghost(
+void
+delete_ghost(
+        Model *g,
         Player *p)
 {
     if (p) {
-        delete_player(ghost_id(p->id));
+        delete_player(g, ghost_id(p->id));
     }
 }
 
@@ -3866,7 +3762,9 @@ void delete_ghost(
 // - nx, ny, nz: normal of the block's face to check
 // Returns:
 // - non-zero if the given block face is covered
-int is_block_face_covered(
+int
+is_block_face_covered(
+        Model *g,
         int x,
         int y,
         int z,
@@ -3875,7 +3773,7 @@ int is_block_face_covered(
         float nz)
 {
     assert(nx != 0.0 || ny != 0.0 || nz != 0.0);
-    int w = get_block(roundf(x + nx), roundf(y + ny), roundf(z + nz));
+    int w = get_block(g, roundf(x + nx), roundf(y + ny), roundf(z + nz));
     return is_obstacle(w);
 }
 
@@ -3885,7 +3783,9 @@ int is_block_face_covered(
 // - x, y, z: box center position
 // - ex, ey, ez: box extents
 // Returns: intersected block location through cx, cy, cz
-int box_intersect_world(
+int
+box_intersect_world(
+        Model *g,
         float x,
         float y,
         float z,
@@ -3904,7 +3804,7 @@ int box_intersect_world(
     for (int bx = x0; bx <= x1; bx++) {
         for (int by = y0; by <= y1; by++) {
             for (int bz = z0; bz <= z1; bz++) {
-                int w = get_block(bx, by, bz);
+                int w = get_block(g, bx, by, bz);
                 if (!is_obstacle(w)) {
                     continue;
                 }
@@ -3936,7 +3836,9 @@ int box_intersect_world(
 // Returns:
 // - earliest collision time, between 0.0 and 1.0
 // - writes values out to nx, ny, and nz
-float box_sweep_world(
+float
+box_sweep_world(
+        Model *g,
         float x,        // box center x
         float y,        // box center y
         float z,        // box center z
@@ -3978,7 +3880,7 @@ float box_sweep_world(
                 // Skip the current block
                 if (bx == cx && by == cy && bz == cz) { continue; }
                 // Only collide with obstacle blocks
-                int w = get_block(bx, by, bz);
+                int w = get_block(g, bx, by, bz);
                 if (!is_obstacle(w)) { continue; }
                 // Box must intersect the broad-phase bounding box
                 if (!box_intersect_block(bbx, bby, bbz, bbex, bbey, bbez, bx, by, bz)) {
@@ -3996,7 +3898,7 @@ float box_sweep_world(
                 // Can only collide with an exposed block face or a face covered
                 // by the current block the player is in
                 if (!((bx + snx == cx) && (by + sny == cy) && (bz + sny == cz))
-                        && is_block_face_covered(bx, by, bz, snx, sny, snz))
+                        && is_block_face_covered(g, bx, by, bz, snx, sny, snz))
                 {
                     continue;
                 }
@@ -4014,7 +3916,9 @@ float box_sweep_world(
 }
 
 // Linear function: damage(d_vel) = a + b * d_vel IF d_vel > min
-float calc_damage_from_impulse(
+float
+calc_damage_from_impulse(
+        Model *g,
         float d_vel)
 {
     const float min_impulse_damage = g->physics.min_impulse_damage;
@@ -4024,3 +3928,23 @@ float calc_damage_from_impulse(
     return roundf(impulse_damage_min + impulse_damage_scale * d_vel);
 }
 
+
+void
+set_matrix_3d_player_camera(  // Everything except the player pointer is output
+        Model *g,
+        float matrix[16],     // [output]
+        const Player *p)      // Player to get camera for
+{
+    set_matrix_3d(
+            matrix,
+            g->width,
+            g->height,
+            p->state.x,
+            player_eye_y(p->state.y),
+            p->state.z,
+            p->state.rx,
+            p->state.ry,
+            g->fov,
+            g->ortho,
+            g->render_radius);
+}
