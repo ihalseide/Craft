@@ -1,10 +1,6 @@
 #include "texturedBox.h"
 
 
-// TODO: remove this
-//#include <stdio.h>
-
-
 // Make a textured 3D box (positioned at the origin)
 void make_box(
         float *data,              // output pointer
@@ -64,9 +60,9 @@ void make_box(
                              boxTexture->bottom.x, boxTexture->front.x, boxTexture->back.x };
     const int faces_y[6] = { boxTexture->left.y, boxTexture->right.y, boxTexture->top.y,
                              boxTexture->bottom.y, boxTexture->front.y, boxTexture->back.y };
-    const int faces_x_width[6] = { boxTexture->z_depth, boxTexture->z_depth, boxTexture->x_width,
+    const int faces_u_width[6] = { boxTexture->z_depth, boxTexture->z_depth, boxTexture->x_width,
                                  boxTexture->x_width, boxTexture->x_width, boxTexture->x_width };
-    const int faces_y_height[6] = { boxTexture->y_height, boxTexture->y_height, boxTexture->z_depth,
+    const int faces_v_width[6] = { boxTexture->y_height, boxTexture->y_height, boxTexture->z_depth,
                                   boxTexture->z_depth, boxTexture->y_height, boxTexture->y_height};
     const float pixelsPerBlock = 16;
     const float texturePixelWidth = 256;
@@ -83,10 +79,9 @@ void make_box(
             continue;
         }
         const float u0 = faces_x[face] / texturePixelWidth;
-        const float u1 = (faces_x[face] + faces_x_width[face]) / texturePixelWidth;
-        const float v0 = (faces_y[face] + faces_y_height[face]) / texturePixelHeight;
-        const float v1 = faces_y[face] / texturePixelHeight;
-        //printf("u0=%d, v0=%d\nu1=%d, v1=%d\n", u0, v0, u1, v1);
+        const float u1 = (faces_x[face] + faces_u_width[face]) / texturePixelWidth;
+        const float v0 = 1.0 - (faces_y[face] / texturePixelHeight);
+        const float v1 = 1.0 - ((faces_y[face] + faces_v_width[face]) / texturePixelHeight);
         const int is_flip = (ao[face][0] + ao[face][3]) > (ao[face][1] + ao[face][2]);
         for (int vertex_it = 0; vertex_it < 6; vertex_it++)
         {

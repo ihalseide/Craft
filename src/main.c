@@ -19,7 +19,8 @@
 extern Model *g;
 
 
-int main(int argc, char **argv) {
+int main(int argc, char **argv) 
+{
 
     // INITIALIZATION //
     curl_global_init(CURL_GLOBAL_DEFAULT);

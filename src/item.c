@@ -1,5 +1,6 @@
 #include "item.h"
 #include "util.h"
+#include <assert.h>
 
 // The list of block ids the player can build.
 // Note: the player cannot build every block type (such as clouds).
@@ -254,21 +255,27 @@ int block_get_max_damage(int w) {
 }
 
 
-static
 int
 block_type_get_texture_x(
         int tile_id)
 {
-    return (tile_id % 16) * 16;
+    int tileSize = 16;
+    int tilesPerRow = 16;
+    int value = (tile_id % tilesPerRow) * tileSize;
+    return value;
 }
 
 
-static
 int
 block_type_get_texture_y(
         int tile_id)
 {
-    return (tile_id / 16) * 16;
+    int textureHeight = 256;
+    int tileSize = 16;
+    int tilesPerRow = 16;
+    int value = textureHeight - ((1 + tile_id / tilesPerRow) * tileSize);
+    //int value = (tile_id / tilesPerRow) * tileSize;
+    return value;
 }
 
 
@@ -279,30 +286,41 @@ get_texture_coordinates_for_block_if_yes(
         int yes,
         int texture_tile_id)
 {
+    int x, y;
     if (yes)
     {
-        out_texture_point->x = block_type_get_texture_x(texture_tile_id);
-        out_texture_point->y = block_type_get_texture_y(texture_tile_id);
+        x = block_type_get_texture_x(texture_tile_id);
+        y = block_type_get_texture_y(texture_tile_id);
+//        if (texture_tile_id == GRASS)
+//        {
+//            x = 0;
+//            y = 224;
+//        }
+        assert(x >= 0);
+        assert(y >= 0);
     }
     else
     {
-        out_texture_point->x = -1;
-        out_texture_point->y = -1;
+        x = -1;
+        y = -1;
     }
+    out_texture_point->x = x;
+    out_texture_point->y = y;
 }
 
 
 void
 get_textured_box_for_block(
-        int w,
-        int left,
-        int right,
-        int top,
-        int bottom,
-        int front,
-        int back,
-        TexturedBox *out_textured_box)
+        int w,                          // tile id
+        int left,                       // whether to generate the left   face or not
+        int right,                      // whether to generate the right  face or not
+        int top,                        // whether to generate the top    face or not
+        int bottom,                     // whether to generate the bottom face or not
+        int front,                      // whether to generate the front  face or not
+        int back,                       // whether to generate the back   face or not
+        TexturedBox *out_textured_box)  // where to put the result
 {
+    /* Tip: change pixelsPerBlock to a smaller number than 16 to visually debug block faces! */
     const int pixelsPerBlock = 16;
     TexturedBox *o = out_textured_box;
     o->x_width  = pixelsPerBlock;

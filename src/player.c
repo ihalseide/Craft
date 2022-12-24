@@ -85,7 +85,8 @@ void update_player(
 
 
 // Create buffer for player model
-GLuint gen_player_buffer(  // returns OpenGL buffer handle
+GLuint 
+gen_player_buffer(  // returns OpenGL buffer handle
         float x,           // player x
         float y,           // player y
         float z,           // player z
@@ -93,14 +94,15 @@ GLuint gen_player_buffer(  // returns OpenGL buffer handle
         float ry,          // player rotation y
         float brx)         // player body rotation x
 {
-    const unsigned faces = 6 * 2 * 6;
+    const unsigned faces = 6 * 3;  // TODO: change to 6 * 6 for all body parts
     GLfloat *data = malloc_faces(10, faces);
     make_player(data, x, y, z, rx, ry, brx);
     return gen_faces(10, faces, data);
 }
 
 
-void set_matrix_3d_player_camera(   // Everything except the player pointer is output
+void 
+set_matrix_3d_player_camera(   // Everything except the player pointer is output
         float matrix[16],           // [output]
         const Player *p)            // Player to get camera for
 {
@@ -119,26 +121,37 @@ void set_matrix_3d_player_camera(   // Everything except the player pointer is o
 }
 
 
-static void make_player_head(
-        float *data,
+static
+void
+make_player_head(
+        float *data,               // data out
         unsigned count,
         unsigned offset,
         unsigned stride,
-        float x,      // player position x
-        float y,      // player position y
-        float z,      // player position z
-        float rx,     // player (head) rotation
+        float x,                   // player position x
+        float y,                   // player position y
+        float z,                   // player position z
+        float rx,                  // player (head) rotation
         float ry,
         const float ao[6][4],
         const float light[6][4])
 {
     // Make a player head with specific texture tiles
     // and a scale smaller than a normal block
-    make_cube_faces(
-            data, ao, light,
-            1, 1, 1, 1, 1, 1,
-            226, 224, 241, 209, 225, 227,
-            0, 0, 0, 0.35);
+    const int head_size = 10;
+    static const TexturedBox head_box = 
+    {
+        .left    = (PointInt2){ .x = 24, .y = 18 },
+        .right   = (PointInt2){ .x = 0,  .y = 18 },
+        .top     = (PointInt2){ .x = 12, .y = 6  },
+        .bottom  = (PointInt2){ .x = 12, .y = 30 },
+        .front   = (PointInt2){ .x = 12, .y = 18 },
+        .back    = (PointInt2){ .x = 0,  .y = 6  },
+        .x_width  = head_size,
+        .y_height = head_size,
+        .z_depth  = head_size,
+    };
+    make_box(data, ao, light, &head_box, 0, 0, 0);
 
     float ma[16];
     float mb[16];
@@ -150,17 +163,16 @@ static void make_player_head(
     mat_rotate(mb, cosf(rx), 0, sinf(rx), -ry);
     mat_multiply(ma, mb, ma);
 
-    mat_scale(mb, PLAYER_HEAD_SCALE, PLAYER_HEAD_SCALE, PLAYER_HEAD_SCALE);
-    mat_multiply(ma, mb, ma);
-
-    mat_translate(mb, x, player_eye_y(y), z);
+    mat_translate(mb, x, y + PLAYER_HEAD_Y, z);
     mat_multiply(ma, mb, ma);
 
     mat_apply(data, ma, count, offset, stride);
 }
 
 
-static void make_player_body(
+static
+void
+make_player_body(
         float *data,
         unsigned count,
         unsigned offset,
@@ -172,54 +184,71 @@ static void make_player_body(
         const float ao[6][4],
         const float light[6][4])
 {
+    static const TexturedBox body_box = 
+    {
+        .left    = (PointInt2){ .x = 62, .y = 14 },
+        .right   = (PointInt2){ .x = 36, .y = 14 },
+        .top     = (PointInt2){ .x = 46, .y = 4  },
+        .bottom  = (PointInt2){ .x = 46, .y = 34 },
+        .front   = (PointInt2){ .x = 46, .y = 14 },
+        .back    = (PointInt2){ .x = 72, .y = 14 },
+        .x_width  = 12,
+        .y_height = 14,
+        .z_depth  = 7,
+    };
+    make_box(data + offset, ao, light, &body_box, 0, 0, 0);
+
     float ma[16];
     float mb[16];
-    make_cube_faces(
-            data + offset, ao, light,
-            1, 1, 1, 1, 1, 1,
-            230, 228, 245, 213, 229, 231,
-            0, 0, 0, 1);
     mat_identity(ma);
+
     mat_translate(mb, x, y + PLAYER_BODY_Y, z);
     mat_multiply(ma, ma, mb);
+
     mat_rotate(mb, 0, 1, 0, brx);
     mat_multiply(ma, ma, mb);
-    mat_scale(mb, PLAYER_BODY_EX, PLAYER_BODY_EY, PLAYER_BODY_EZ);
-    mat_multiply(ma, ma, mb);
+
     mat_apply(data, ma, count, offset, stride);
 }
 
 
-static void make_player_limb(
-        float *data, 
-        int count,
-        int offset,
-        int stride,
-        float x, 
-        float y_top, 
+static
+void
+make_player_leg(
+        float *data,
+        unsigned count,
+        unsigned offset,
+        unsigned stride,
+        float x,
+        float y,
         float z,
         float brx,
-        float angle_z,
         const float ao[6][4],
         const float light[6][4])
 {
-    make_cube_faces(
-            data + offset, ao, light,
-            1, 1, 1, 1, 1, 1,
-            230, 228, 245, 213, 229, 231,
-            0, 0, 0, 1);
+    static const TexturedBox leg_box = 
+    {
+        .left    = (PointInt2){ .x = 88, .y = 24 },
+        .right   = (PointInt2){ .x = 88, .y = 24 },
+        .top     = (PointInt2){ .x = 88, .y = 24 },
+        .bottom  = (PointInt2){ .x = 88, .y = 24 },
+        .front   = (PointInt2){ .x = 88, .y = 24 },
+        .back    = (PointInt2){ .x = 88, .y = 24 },
+        .x_width  = 5,
+        .y_height = 14,
+        .z_depth  = 5,
+    };
+    make_box(data + offset, ao, light, &leg_box, 0, 0, 0);
 
-    float ma[16], mb[16];
+    float ma[16];
+    float mb[16];
     mat_identity(ma);
 
-    mat_scale(mb, PLAYER_LIMB_EX, PLAYER_LIMB_EY, PLAYER_LIMB_EX);
-    mat_multiply(ma, mb, ma);
+    mat_translate(mb, x, y, z);
+    mat_multiply(ma, ma, mb);
 
     mat_rotate(mb, 0, 1, 0, brx);
-    mat_multiply(ma, mb, ma);
-
-    mat_translate(mb, x, y_top - PLAYER_LIMB_EX, z);
-    mat_multiply(ma, mb, ma);
+    mat_multiply(ma, ma, mb);
 
     mat_apply(data, ma, count, offset, stride);
 }
@@ -255,21 +284,11 @@ void make_player(     // writes specific values to the data pointer
     make_player_body(data, count, offset*1, stride,
             x, y, z, brx, ao, light);
 
-    // arm
-    make_player_limb(data, count, offset*4, stride,
-            x + (PLAYER_BODY_EX + PLAYER_LIMB_EX), y + PLAYER_BODY_EY, z, brx, 0.0f, ao, light);
+    // right leg
+    make_player_leg(data, count, offset*2, stride,
+            x, y-0.5, z, brx, ao, light);
 
-    // arm
-    make_player_limb(data, count, offset*5, stride,
-            x - (PLAYER_BODY_EX + PLAYER_LIMB_EX), y + PLAYER_BODY_EY, z, brx, 0.0f, ao, light);
-
-    // leg
-    make_player_limb(data, count, offset*2, stride,
-            x + PLAYER_LIMB_EX, y - PLAYER_BODY_EY, z, brx, 0.0f, ao, light);
-
-    // leg
-    make_player_limb(data, count, offset*3, stride,
-            x - PLAYER_LIMB_EX, y - PLAYER_BODY_EY, z, brx, 0.0f, ao, light);
+    // left leg
 }
 
 

@@ -12,16 +12,9 @@
 #define PLAYER_HEIGHT 1.2f
 #define PLAYER_BLOCKHEIGHT 3
 
-// Difference between player's position and player's head/eye level
-#define PLAYER_HEAD_SCALE 0.69f
-#define PLAYER_HEAD_Y (PLAYER_HEIGHT - PLAYER_HEAD_SCALE/2.0f + 0.1f)
-
-#define PLAYER_BODY_EY 0.40f
-#define PLAYER_BODY_EX 0.33f
-#define PLAYER_BODY_EZ 0.15f
-#define PLAYER_BODY_Y (PLAYER_HEAD_Y - PLAYER_HEAD_SCALE/2.0f - PLAYER_BODY_EY + 0.11f)
-#define PLAYER_LIMB_EY PLAYER_BODY_EY
-#define PLAYER_LIMB_EX PLAYER_BODY_EZ
+// Player Head and Body center
+#define PLAYER_HEAD_Y 0.95
+#define PLAYER_BODY_Y 0.20
 
 
 // State for a player
