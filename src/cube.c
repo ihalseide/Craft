@@ -1,4 +1,5 @@
 #include "cube.h"
+#include "texturedBox.h"
 #include "item.h"
 #include "matrix.h"
 #include "player.h"
@@ -128,32 +129,9 @@ void make_cube(                   // writes specific values to the data pointer
         int w)                    // cube tile ID
 {
     // Get blocks texture faces (the blocks lookup table is defined in item.c)
-    int wleft = blocks[w][0];
-    int wright = blocks[w][1];
-    int wtop = blocks[w][2];
-    int wbottom = blocks[w][3];
-    int wfront = blocks[w][4];
-    int wback = blocks[w][5];
-    make_cube_faces(
-            data,
-            ao,
-            light,
-            left,
-            right,
-            top,
-            bottom,
-            front,
-            back,
-            wleft,
-            wright,
-            wtop,
-            wbottom,
-            wfront,
-            wback,
-            x,
-            y,
-            z,
-            n);
+    TexturedBox textured_box;
+    get_textured_box_for_block(w, left, right, top, bottom, front, back, &textured_box);
+    make_box(data, ao, light, &textured_box, x, y, z);
 }
 
 

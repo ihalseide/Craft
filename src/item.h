@@ -2,6 +2,9 @@
 #define _item_h_
 
 
+#include "texturedBox.h"
+
+
 // Block ids/types
 #define EMPTY 0
 #define GRASS 1
@@ -66,6 +69,17 @@ extern const int item_count;
 extern const int blocks[256][6];
 extern const int plants[256];
 
+
+void
+get_textured_box_for_block(
+        int w,
+        int left,
+        int right,
+        int top,
+        int bottom,
+        int front,
+        int back,
+        TexturedBox *out_textured_box);
 
 int is_plant(
         int w);

@@ -270,20 +270,6 @@ GLuint gen_cube_buffer(
         {0.5, 0.5, 0.5, 0.5}
     };
     make_cube(data, ao, light, 1, 1, 1, 1, 1, 1, x, y, z, n, w);
-    /*
-    TexturedBox texturedBox = {
-        .left = {.x = 0, .y = 224},
-        .right = {.x = 0, .y = 224},
-        .top = {.x = 0, .y = 224},
-        .bottom = {.x = 0, .y = 224},
-        .front = {.x = 0, .y = 224},
-        .back = {.x = 0, .y = 224},
-        .x_width = 16,
-        .y_height = 16,
-        .z_depth = 16,
-    };
-    make_box(data, ao, light, &texturedBox, x, y, z);
-    */
     return gen_faces(10, 6, data);
 }
 

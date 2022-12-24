@@ -253,3 +253,66 @@ int block_get_max_damage(int w) {
     }
 }
 
+
+static
+int
+block_type_get_texture_x(
+        int tile_id)
+{
+    return (tile_id % 16) * 16;
+}
+
+
+static
+int
+block_type_get_texture_y(
+        int tile_id)
+{
+    return (tile_id / 16) * 16;
+}
+
+
+static
+void
+get_texture_coordinates_for_block_if_yes(
+        PointInt2 *out_texture_point,
+        int yes,
+        int texture_tile_id)
+{
+    if (yes)
+    {
+        out_texture_point->x = block_type_get_texture_x(texture_tile_id);
+        out_texture_point->y = block_type_get_texture_y(texture_tile_id);
+    }
+    else
+    {
+        out_texture_point->x = -1;
+        out_texture_point->y = -1;
+    }
+}
+
+
+void
+get_textured_box_for_block(
+        int w,
+        int left,
+        int right,
+        int top,
+        int bottom,
+        int front,
+        int back,
+        TexturedBox *out_textured_box)
+{
+    const int pixelsPerBlock = 16;
+    TexturedBox *o = out_textured_box;
+    o->x_width  = pixelsPerBlock;
+    o->y_height = pixelsPerBlock;
+    o->z_depth  = pixelsPerBlock;
+    get_texture_coordinates_for_block_if_yes(&o->left,   left,   blocks[w][0]);
+    get_texture_coordinates_for_block_if_yes(&o->right,  right,  blocks[w][1]);
+    get_texture_coordinates_for_block_if_yes(&o->top,    top,    blocks[w][2]);
+    get_texture_coordinates_for_block_if_yes(&o->bottom, bottom, blocks[w][3]);
+    get_texture_coordinates_for_block_if_yes(&o->front,  front,  blocks[w][4]);
+    get_texture_coordinates_for_block_if_yes(&o->back,   back,   blocks[w][5]);
+}
+

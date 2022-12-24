@@ -59,7 +59,7 @@ void make_box(
         {0, 1, 2, 1, 3, 2},
         {0, 2, 1, 2, 3, 1}
     };
-                            // left, right, top, bottom, front, back
+    // left, right, top, bottom, front, back
     const int faces_x[6] = { boxTexture->left.x, boxTexture->right.x, boxTexture->top.x,
                              boxTexture->bottom.x, boxTexture->front.x, boxTexture->back.x };
     const int faces_y[6] = { boxTexture->left.y, boxTexture->right.y, boxTexture->top.y,
@@ -76,10 +76,16 @@ void make_box(
     const float extent_z = (boxTexture->z_depth  / 2.0) / pixelsPerBlock; // for block position
     for (int face = 0; face < 6; face++)
     {
+        if ((faces_x[face] < 0) || (faces_y[face] < 0))
+        {
+            // If the texture coordinate for a face is negative, then that is a signal to skip that face
+            // Note: the data pointer is purposefully not incremented when we skip this face!
+            continue;
+        }
         const float u0 = faces_x[face] / texturePixelWidth;
-        const float v0 = faces_y[face] / texturePixelHeight;
         const float u1 = (faces_x[face] + faces_x_width[face]) / texturePixelWidth;
-        const float v1 = (faces_y[face] + faces_y_height[face]) / texturePixelHeight;
+        const float v0 = (faces_y[face] + faces_y_height[face]) / texturePixelHeight;
+        const float v1 = faces_y[face] / texturePixelHeight;
         //printf("u0=%d, v0=%d\nu1=%d, v1=%d\n", u0, v0, u1, v1);
         const int is_flip = (ao[face][0] + ao[face][3]) > (ao[face][1] + ao[face][2]);
         for (int vertex_it = 0; vertex_it < 6; vertex_it++)
