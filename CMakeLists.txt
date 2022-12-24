@@ -14,7 +14,8 @@ include_directories(deps/noise)
 include_directories(deps/sqlite)
 include_directories(deps/tinycthread)
 
-add_compile_options(-g -Wall -Wextra -Wfatal-errors -Wunused)
+#add_compile_options(-g -Wall -Wextra -Werror -Wfatal-errors -Wunused)
+#add_compile_options(-g -Wall -Wextra -Wfatal-errors -Wunused)
 add_executable(
     craft
     ${SOURCE_FILES}

@@ -265,7 +265,7 @@ char *client_recv() {
 // - arg
 // Returns:
 // - ?
-int recv_worker(void *arg) {
+int recv_worker(void *) {
     char *data = malloc(sizeof(char) * RECV_SIZE);
     while (1) {
         int length;

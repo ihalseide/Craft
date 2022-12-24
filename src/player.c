@@ -3,6 +3,7 @@
 #include "game.h"
 #include "matrix.h"
 #include "player.h"
+#include "texturedBox.h"
 #include "util.h"
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
@@ -98,26 +99,6 @@ gen_player_buffer(  // returns OpenGL buffer handle
     GLfloat *data = malloc_faces(10, faces);
     make_player(data, x, y, z, rx, ry, brx);
     return gen_faces(10, faces, data);
-}
-
-
-void 
-set_matrix_3d_player_camera(   // Everything except the player pointer is output
-        float matrix[16],           // [output]
-        const Player *p)            // Player to get camera for
-{
-    set_matrix_3d(
-            matrix,
-            g->width,
-            g->height,
-            p->state.x,
-            player_eye_y(p->state.y),
-            p->state.z,
-            p->state.rx,
-            p->state.ry,
-            g->fov,
-            g->ortho,
-            g->render_radius);
 }
 
 
@@ -381,5 +362,4 @@ void make_player(     // writes specific values to the data pointer
     make_player_arm(data, count, offset*5, stride,
             x, y, z, brx, 0, ao, light);
 }
-
 

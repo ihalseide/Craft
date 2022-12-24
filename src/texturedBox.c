@@ -2,7 +2,8 @@
 
 
 // Make a textured 3D box (positioned at the origin)
-void make_box(
+void
+make_box(
         float *data,              // output pointer
         const float ao[6][4],
         const float light[6][4],

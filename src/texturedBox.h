@@ -30,7 +30,8 @@ TexturedBox;
 
 // Make a textured 3D box
 // Data must have room for <60> floats! (10 floats of data for each of the 6 faces)
-void make_box(
+void
+make_box(
         float *data,              // output pointer
         const float ao[6][4],
         const float light[6][4],
