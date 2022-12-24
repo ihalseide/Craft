@@ -4,7 +4,7 @@ Minecraft clone for Windows, Mac OS X and Linux. Just a few thousand lines of C 
 
 http://www.michaelfogleman.com/craft/
 
-![Screenshot](https://i.imgur.com/SH7wcas.png)
+![Game Screenshot](https://div0.com/i/miscraft screenshot.png)
 
 ### Contributing
 
