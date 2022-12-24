@@ -94,7 +94,7 @@ gen_player_buffer(  // returns OpenGL buffer handle
         float ry,          // player rotation y
         float brx)         // player body rotation x
 {
-    const unsigned faces = 6 * 3;  // TODO: change to 6 * 6 for all body parts
+    const unsigned faces = 6 * 4;  // TODO: change to 6 * 6 for all body parts
     GLfloat *data = malloc_faces(10, faces);
     make_player(data, x, y, z, rx, ry, brx);
     return gen_faces(10, faces, data);
@@ -223,31 +223,112 @@ make_player_leg(
         float y,
         float z,
         float brx,
+        int is_left,              // flag for if this is the left leg
         const float ao[6][4],
         const float light[6][4])
 {
-    static const TexturedBox leg_box = 
+    static const TexturedBox left_leg_box = 
     {
-        .left    = (PointInt2){ .x = 88, .y = 24 },
-        .right   = (PointInt2){ .x = 88, .y = 24 },
-        .top     = (PointInt2){ .x = 88, .y = 24 },
-        .bottom  = (PointInt2){ .x = 88, .y = 24 },
-        .front   = (PointInt2){ .x = 88, .y = 24 },
-        .back    = (PointInt2){ .x = 88, .y = 24 },
-        .x_width  = 5,
-        .y_height = 14,
-        .z_depth  = 5,
+        .left    = (PointInt2){ .x = 100, .y = 24 },
+        .right   = (PointInt2){ .x = 88,  .y = 24 },
+        .top     = (PointInt2){ .x = 112, .y = 24 },
+        .bottom  = (PointInt2){ .x = 82,  .y = 38 },
+        .front   = (PointInt2){ .x = 94,  .y = 24 },
+        .back    = (PointInt2){ .x = 106, .y = 24 },
+        .x_width  = 6,
+        .y_height = 15,
+        .z_depth  = 6,
     };
-    make_box(data + offset, ao, light, &leg_box, 0, 0, 0);
+    static const TexturedBox right_leg_box = 
+    {
+        .left    = (PointInt2){ .x = 30 + 100, .y = 24 },
+        .right   = (PointInt2){ .x = 30 + 88,  .y = 24 },
+        .top     = (PointInt2){ .x = 30 + 112, .y = 24 },
+        .bottom  = (PointInt2){ .x = 30 + 82,  .y = 38 },
+        .front   = (PointInt2){ .x = 30 + 94,  .y = 24 },
+        .back    = (PointInt2){ .x = 30 + 106, .y = 24 },
+        .x_width  = 6,
+        .y_height = 15,
+        .z_depth  = 6,
+    };
+    const TexturedBox *leg_box = is_left ? &left_leg_box : &right_leg_box;
+    make_box(data + offset, ao, light, leg_box, 0, 0, 0);
 
     float ma[16];
     float mb[16];
     mat_identity(ma);
 
-    mat_translate(mb, x, y, z);
+    mat_translate(mb, x, y - 4.0/16.0 - 0.45, z);
     mat_multiply(ma, ma, mb);
 
     mat_rotate(mb, 0, 1, 0, brx);
+    mat_multiply(ma, ma, mb);
+
+    float leg_offset = (is_left ? -1 : 1) * 3.0 / 16.0; // +/-3 pixels
+    //leg_offset*=2; // to see the inside
+    mat_translate(mb, leg_offset, 0, 0);
+    mat_multiply(ma, ma, mb);
+
+    mat_apply(data, ma, count, offset, stride);
+}
+
+
+
+static
+void
+make_player_arm(
+        float *data,
+        unsigned count,
+        unsigned offset,
+        unsigned stride,
+        float x,
+        float y,
+        float z,
+        float brx,
+        int is_left,              // flag for if this is the left leg
+        const float ao[6][4],
+        const float light[6][4])
+{
+    static const TexturedBox left_arm_box = 
+    {
+        .left    = (PointInt2){ .x = 88,  .y = 4 },
+        .right   = (PointInt2){ .x = 98,  .y = 4 },
+        .top     = (PointInt2){ .x = 112, .y = 4 },
+        .bottom  = (PointInt2){ .x = 82,  .y = 19 },
+        .front   = (PointInt2){ .x = 93,  .y = 4 },
+        .back    = (PointInt2){ .x = 103, .y = 4 },
+        .x_width  = 5,
+        .y_height = 15,
+        .z_depth  = 5,
+    };
+    static const TexturedBox right_arm_box = 
+    {
+        .left    = (PointInt2){ .x = 30 + 100, .y = 24 },
+        .right   = (PointInt2){ .x = 30 + 88,  .y = 24 },
+        .top     = (PointInt2){ .x = 30 + 112, .y = 24 },
+        .bottom  = (PointInt2){ .x = 30 + 82,  .y = 38 },
+        .front   = (PointInt2){ .x = 30 + 94,  .y = 24 },
+        .back    = (PointInt2){ .x = 30 + 106, .y = 24 },
+        .x_width  = 5,
+        .y_height = 15,
+        .z_depth  = 5,
+    };
+    const TexturedBox *arm_box = is_left ? &left_arm_box : &right_arm_box;
+    make_box(data + offset, ao, light, arm_box, 0, 0, 0);
+
+    float ma[16];
+    float mb[16];
+    mat_identity(ma);
+
+    mat_translate(mb, x, y + 1.5 / 16.0, z);
+    mat_multiply(ma, ma, mb);
+
+    mat_rotate(mb, 0, 1, 0, brx);
+    mat_multiply(ma, ma, mb);
+
+    float arm_offset = (is_left ? -1 : 1) * 8.0 / 16.0; // +/-8 pixels
+    //arm_offset*=2; // to see the inside
+    mat_translate(mb, arm_offset, 0, 0);
     mat_multiply(ma, ma, mb);
 
     mat_apply(data, ma, count, offset, stride);
@@ -284,11 +365,13 @@ void make_player(     // writes specific values to the data pointer
     make_player_body(data, count, offset*1, stride,
             x, y, z, brx, ao, light);
 
-    // right leg
-    make_player_leg(data, count, offset*2, stride,
-            x, y-0.5, z, brx, ao, light);
-
     // left leg
+    make_player_arm(data, count, offset*2, stride,
+            x, y, z, brx, 1, ao, light);
+
+    // right leg
+    make_player_arm(data, count, offset*3, stride,
+            x, y, z, brx, 0, ao, light);
 }
 
 
