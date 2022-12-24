@@ -94,7 +94,7 @@ gen_player_buffer(  // returns OpenGL buffer handle
         float ry,          // player rotation y
         float brx)         // player body rotation x
 {
-    const unsigned faces = 6 * 4;  // TODO: change to 6 * 6 for all body parts
+    const unsigned faces = 6 * 6;  // 6 limbs, 6 faces each
     GLfloat *data = malloc_faces(10, faces);
     make_player(data, x, y, z, rx, ry, brx);
     return gen_faces(10, faces, data);
@@ -285,7 +285,7 @@ make_player_arm(
         float y,
         float z,
         float brx,
-        int is_left,              // flag for if this is the left leg
+        int is_left,              // flag for if this is the left arm
         const float ao[6][4],
         const float light[6][4])
 {
@@ -293,8 +293,8 @@ make_player_arm(
     {
         .left    = (PointInt2){ .x = 88,  .y = 4 },
         .right   = (PointInt2){ .x = 98,  .y = 4 },
-        .top     = (PointInt2){ .x = 112, .y = 4 },
-        .bottom  = (PointInt2){ .x = 82,  .y = 19 },
+        .top     = (PointInt2){ .x = 83,  .y = 4 },
+        .bottom  = (PointInt2){ .x = 108, .y = 19 },
         .front   = (PointInt2){ .x = 93,  .y = 4 },
         .back    = (PointInt2){ .x = 103, .y = 4 },
         .x_width  = 5,
@@ -303,12 +303,12 @@ make_player_arm(
     };
     static const TexturedBox right_arm_box = 
     {
-        .left    = (PointInt2){ .x = 30 + 100, .y = 24 },
-        .right   = (PointInt2){ .x = 30 + 88,  .y = 24 },
-        .top     = (PointInt2){ .x = 30 + 112, .y = 24 },
-        .bottom  = (PointInt2){ .x = 30 + 82,  .y = 38 },
-        .front   = (PointInt2){ .x = 30 + 94,  .y = 24 },
-        .back    = (PointInt2){ .x = 30 + 106, .y = 24 },
+        .left    = (PointInt2){ .x = 25 + 88,  .y = 4 },
+        .right   = (PointInt2){ .x = 25 + 98,  .y = 4 },
+        .top     = (PointInt2){ .x = 25 + 83,  .y = 4 },
+        .bottom  = (PointInt2){ .x = 25 + 108, .y = 19 },
+        .front   = (PointInt2){ .x = 25 + 93,  .y = 4 },
+        .back    = (PointInt2){ .x = 25 + 103, .y = 4 },
         .x_width  = 5,
         .y_height = 15,
         .z_depth  = 5,
@@ -366,11 +366,19 @@ void make_player(     // writes specific values to the data pointer
             x, y, z, brx, ao, light);
 
     // left leg
-    make_player_arm(data, count, offset*2, stride,
+    make_player_leg(data, count, offset*2, stride,
             x, y, z, brx, 1, ao, light);
 
     // right leg
-    make_player_arm(data, count, offset*3, stride,
+    make_player_leg(data, count, offset*3, stride,
+            x, y, z, brx, 0, ao, light);
+
+    // left arm
+    make_player_arm(data, count, offset*4, stride,
+            x, y, z, brx, 1, ao, light);
+
+    // right arm
+    make_player_arm(data, count, offset*5, stride,
             x, y, z, brx, 0, ao, light);
 }
 

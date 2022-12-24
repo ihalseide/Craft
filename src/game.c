@@ -564,7 +564,7 @@ void draw_player(
         Player *player)
 {
     const int offset = 36;
-    const int num_parts = 4; // TODO: change to 6 for full body
+    const int num_parts = 6;  // for player body
     for (unsigned int i = 0; i < num_parts; i++) {
         draw_cube_offset(attrib, player->buffer, i * offset);
     }
