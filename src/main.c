@@ -6,6 +6,7 @@
 #include "player.h"
 #include "tinycthread.h"
 #include "util.h"
+#include "texturedBox.h"
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <curl/curl.h>
@@ -283,6 +284,29 @@ int main(int argc, char **argv) {
             glClear(GL_DEPTH_BUFFER_BIT);
             // Get the face count while rendering for displaying the number on screen
             int face_count = render_chunks(&block_attrib, player);
+            {
+                // test rendering with the new box thingy
+                const TexturedBox texturedBox = {
+                    .left   = {.x = 0, .y = 0},
+                    .right  = {.x = 0, .y = 0},
+                    .top    = {.x = 0, .y = 0},
+                    .bottom = {.x = 0, .y = 0},
+                    .front  = {.x = 0, .y = 0},
+                    .back   = {.x = 0, .y = 0},
+                    .x_width  = 20,
+                    .y_height = 16,
+                    .z_depth  = 16,
+                };
+                GLfloat *data = malloc_faces(10, 6);
+                float ao[6][4] = {0};
+                float light[6][4] = {1};
+                make_box(data, ao, light, &texturedBox, 62.0, 14.0, -3.0);
+                GLint handle = gen_faces(10, 6, data);
+                draw_triangles_3d_ao(
+                        &block_attrib,
+                        handle,
+                        10*6*2);
+            }
             render_signs(&text_attrib, player);
             render_sign(&text_attrib, player);
             render_players(&block_attrib, player);

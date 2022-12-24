@@ -87,8 +87,16 @@ void player_hitbox_extent(
         float *ey,
         float *ez);
 
-
 GLuint gen_player_buffer(
+        float x,
+        float y,
+        float z,
+        float rx,
+        float ry,
+        float brx);
+
+void make_player(
+        float *data,
         float x,
         float y,
         float z,

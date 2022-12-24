@@ -50,15 +50,6 @@ void make_plant(
         int w,
         float rotation);
 
-void make_player(
-        float *data,
-        float x,
-        float y,
-        float z,
-        float rx,
-        float ry,
-        float brx);
-
 void make_cube_wireframe(
         float *data,
         float x,

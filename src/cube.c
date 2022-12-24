@@ -46,7 +46,7 @@ void make_cube_faces(             // Writes specific values to the output pointe
         {0, 0, -1},
         {0, 0, +1}
     };
-    // 6 faces each with 4 points, each of which are 2-vectors
+    // 6 faces each with 4 points (but used 6 for the two triangles), each of which are 2-vectors
     static const float uvs[6][4][2] = {
         {{0, 0}, {1, 0}, {0, 1}, {1, 1}},
         {{1, 0}, {0, 0}, {1, 1}, {0, 1}},
@@ -102,6 +102,7 @@ void make_cube_faces(             // Writes specific values to the output pointe
             // Write the texture UV 2-vector
             *(d++) = du + (uvs[i][j][0] ? b : a);
             *(d++) = dv + (uvs[i][j][1] ? b : a);
+            // Write ao and light data
             *(d++) = ao[i][j];
             *(d++) = light[i][j];
         }
@@ -230,160 +231,6 @@ void make_plant(       // writes specific values to the data pointer
     mat_translate(mb, px, py, pz);
     mat_multiply(ma, mb, ma);
     mat_apply(data, ma, 24, 0, 10);
-}
-
-
-static void make_player_head(
-        float *data,
-        unsigned count,
-        unsigned offset,
-        unsigned stride,
-        float x,      // player position x
-        float y,      // player position y
-        float z,      // player position z
-        float rx,     // player (head) rotation
-        float ry,
-        const float ao[6][4],
-        const float light[6][4])
-{
-    // Make a player head with specific texture tiles
-    // and a scale smaller than a normal block
-    make_cube_faces(
-            data, ao, light,
-            1, 1, 1, 1, 1, 1,
-            226, 224, 241, 209, 225, 227,
-            0, 0, 0, 0.35);
-
-    float ma[16];
-    float mb[16];
-    mat_identity(ma);
-
-    mat_rotate(mb, 0, 1, 0, rx);
-    mat_multiply(ma, mb, ma);
-
-    mat_rotate(mb, cosf(rx), 0, sinf(rx), -ry);
-    mat_multiply(ma, mb, ma);
-
-    mat_scale(mb, PLAYER_HEAD_SCALE, PLAYER_HEAD_SCALE, PLAYER_HEAD_SCALE);
-    mat_multiply(ma, mb, ma);
-
-    mat_translate(mb, x, player_eye_y(y), z);
-    mat_multiply(ma, mb, ma);
-
-    mat_apply(data, ma, count, offset, stride);
-}
-
-
-static void make_player_body(
-        float *data,
-        unsigned count,
-        unsigned offset,
-        unsigned stride,
-        float x,
-        float y,
-        float z,
-        float brx,
-        const float ao[6][4],
-        const float light[6][4])
-{
-    float ma[16];
-    float mb[16];
-    make_cube_faces(
-            data + offset, ao, light,
-            1, 1, 1, 1, 1, 1,
-            230, 228, 245, 213, 229, 231,
-            0, 0, 0, 1);
-    mat_identity(ma);
-    mat_translate(mb, x, y + PLAYER_BODY_Y, z);
-    mat_multiply(ma, ma, mb);
-    mat_rotate(mb, 0, 1, 0, brx);
-    mat_multiply(ma, ma, mb);
-    mat_scale(mb, PLAYER_BODY_EX, PLAYER_BODY_EY, PLAYER_BODY_EZ);
-    mat_multiply(ma, ma, mb);
-    mat_apply(data, ma, count, offset, stride);
-}
-
-
-static void make_player_limb(
-        float *data, 
-        int count,
-        int offset,
-        int stride,
-        float x, 
-        float y_top, 
-        float z,
-        float brx,
-        float angle_z,
-        const float ao[6][4],
-        const float light[6][4])
-{
-    make_cube_faces(
-            data + offset, ao, light,
-            1, 1, 1, 1, 1, 1,
-            230, 228, 245, 213, 229, 231,
-            0, 0, 0, 1);
-
-    float ma[16], mb[16];
-    mat_identity(ma);
-
-    mat_scale(mb, PLAYER_LIMB_EX, PLAYER_LIMB_EY, PLAYER_LIMB_EX);
-    mat_multiply(ma, mb, ma);
-
-    mat_rotate(mb, 0, 1, 0, brx);
-    mat_multiply(ma, mb, ma);
-
-    mat_translate(mb, x, y_top - PLAYER_LIMB_EX, z);
-    mat_multiply(ma, mb, ma);
-
-    mat_apply(data, ma, count, offset, stride);
-}
-
-
-// Make a player model
-void make_player(     // writes specific values to the data pointer
-        float *data,  // output pointer
-        float x,      // player position x
-        float y,      // player position y
-        float z,      // player position z
-        float rx,     // player (head) rotation
-        float ry,
-        float brx)    // player body rotation
-{
-    const int count = 36;
-    const int stride = 10;
-    const int offset = count * stride;
-
-    float ao[6][4] = {0};
-    float light[6][4] = {
-        {0.8, 0.8, 0.8, 0.8},
-        {0.8, 0.8, 0.8, 0.8},
-        {0.8, 0.8, 0.8, 0.8},
-        {0.8, 0.8, 0.8, 0.8},
-        {0.8, 0.8, 0.8, 0.8},
-        {0.8, 0.8, 0.8, 0.8}
-    };
-
-    make_player_head(data, count, offset*0, stride,
-            x, y, z, rx, ry, ao, light);
-
-    make_player_body(data, count, offset*1, stride,
-            x, y, z, brx, ao, light);
-
-    // arm
-    make_player_limb(data, count, offset*4, stride,
-            x + (PLAYER_BODY_EX + PLAYER_LIMB_EX), y + PLAYER_BODY_EY, z, brx, 0.0f, ao, light);
-
-    // arm
-    make_player_limb(data, count, offset*5, stride,
-            x - (PLAYER_BODY_EX + PLAYER_LIMB_EX), y + PLAYER_BODY_EY, z, brx, 0.0f, ao, light);
-
-    // leg
-    make_player_limb(data, count, offset*2, stride,
-            x + PLAYER_LIMB_EX, y - PLAYER_BODY_EY, z, brx, 0.0f, ao, light);
-
-    // leg
-    make_player_limb(data, count, offset*3, stride,
-            x - PLAYER_LIMB_EX, y - PLAYER_BODY_EY, z, brx, 0.0f, ao, light);
 }
 
 
