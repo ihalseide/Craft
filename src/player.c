@@ -141,12 +141,12 @@ make_player_head(
     const int head_size = 10;
     static const TexturedBox head_box = 
     {
-        .left    = (PointInt2){ .x = 24, .y = 18 },
-        .right   = (PointInt2){ .x = 0,  .y = 18 },
-        .top     = (PointInt2){ .x = 12, .y = 6  },
-        .bottom  = (PointInt2){ .x = 12, .y = 30 },
-        .front   = (PointInt2){ .x = 12, .y = 18 },
-        .back    = (PointInt2){ .x = 0,  .y = 6  },
+        .left    = (PointInt2){ .x = 21, .y = 10 },
+        .right   = (PointInt2){ .x = 1,  .y = 10 },
+        .top     = (PointInt2){ .x = 11, .y = 10 },
+        .bottom  = (PointInt2){ .x = 11, .y = 20 },
+        .front   = (PointInt2){ .x = 11, .y = 10 },
+        .back    = (PointInt2){ .x = 31, .y = 10 },
         .x_width  = head_size,
         .y_height = head_size,
         .z_depth  = head_size,
@@ -186,12 +186,12 @@ make_player_body(
 {
     static const TexturedBox body_box = 
     {
-        .left    = (PointInt2){ .x = 62, .y = 14 },
-        .right   = (PointInt2){ .x = 36, .y = 14 },
-        .top     = (PointInt2){ .x = 46, .y = 4  },
-        .bottom  = (PointInt2){ .x = 46, .y = 34 },
-        .front   = (PointInt2){ .x = 46, .y = 14 },
-        .back    = (PointInt2){ .x = 72, .y = 14 },
+        .left    = (PointInt2){ .x = 40, .y = 31 },
+        .right   = (PointInt2){ .x = 21, .y = 31 },
+        .top     = (PointInt2){ .x = 28, .y = 34 },
+        .bottom  = (PointInt2){ .x = 28, .y = 45 },
+        .front   = (PointInt2){ .x = 28, .y = 31 },
+        .back    = (PointInt2){ .x = 47, .y = 31 },
         .x_width  = 12,
         .y_height = 14,
         .z_depth  = 7,
@@ -227,26 +227,26 @@ make_player_leg(
         const float ao[6][4],
         const float light[6][4])
 {
-    static const TexturedBox left_leg_box = 
+    static const TexturedBox right_leg_box = 
     {
-        .left    = (PointInt2){ .x = 100, .y = 24 },
-        .right   = (PointInt2){ .x = 88,  .y = 24 },
-        .top     = (PointInt2){ .x = 112, .y = 24 },
-        .bottom  = (PointInt2){ .x = 82,  .y = 38 },
-        .front   = (PointInt2){ .x = 94,  .y = 24 },
-        .back    = (PointInt2){ .x = 106, .y = 24 },
+        .left    = (PointInt2){ .x = 5,  .y = 53 },
+        .right   = (PointInt2){ .x = 17, .y = 53 },
+        .top     = (PointInt2){ .x = 11, .y = 47 },
+        .bottom  = (PointInt2){ .x = 11, .y = 38 },
+        .front   = (PointInt2){ .x = 11, .y = 53 },
+        .back    = (PointInt2){ .x = 23, .y = 53 },
         .x_width  = 6,
         .y_height = 15,
         .z_depth  = 6,
     };
-    static const TexturedBox right_leg_box = 
+    static const TexturedBox left_leg_box = 
     {
-        .left    = (PointInt2){ .x = 30 + 100, .y = 24 },
-        .right   = (PointInt2){ .x = 30 + 88,  .y = 24 },
-        .top     = (PointInt2){ .x = 30 + 112, .y = 24 },
-        .bottom  = (PointInt2){ .x = 30 + 82,  .y = 38 },
-        .front   = (PointInt2){ .x = 30 + 94,  .y = 24 },
-        .back    = (PointInt2){ .x = 30 + 106, .y = 24 },
+        .left    = (PointInt2){ .x = 30 + 5,  .y = 53 },
+        .right   = (PointInt2){ .x = 30 + 17, .y = 53 },
+        .top     = (PointInt2){ .x = 30 + 11, .y = 47 },
+        .bottom  = (PointInt2){ .x = 30 + 11, .y = 38 },
+        .front   = (PointInt2){ .x = 30 + 11, .y = 53 },
+        .back    = (PointInt2){ .x = 30 + 23, .y = 53 },
         .x_width  = 6,
         .y_height = 15,
         .z_depth  = 6,
@@ -289,26 +289,26 @@ make_player_arm(
         const float ao[6][4],
         const float light[6][4])
 {
-    static const TexturedBox left_arm_box = 
+    static const TexturedBox right_arm_box = 
     {
-        .left    = (PointInt2){ .x = 88,  .y = 4 },
-        .right   = (PointInt2){ .x = 98,  .y = 4 },
-        .top     = (PointInt2){ .x = 83,  .y = 4 },
-        .bottom  = (PointInt2){ .x = 108, .y = 19 },
-        .front   = (PointInt2){ .x = 93,  .y = 4 },
-        .back    = (PointInt2){ .x = 103, .y = 4 },
+        .left    = (PointInt2){ .x = 10, .y = 31  },
+        .right   = (PointInt2){ .x = 0,  .y = 31 },
+        .top     = (PointInt2){ .x = 5,  .y = 26 },
+        .bottom  = (PointInt2){ .x = 5,  .y = 46 },
+        .front   = (PointInt2){ .x = 5,  .y = 31 },
+        .back    = (PointInt2){ .x = 15, .y = 31 },
         .x_width  = 5,
         .y_height = 15,
         .z_depth  = 5,
     };
-    static const TexturedBox right_arm_box = 
+    static const TexturedBox left_arm_box = 
     {
-        .left    = (PointInt2){ .x = 25 + 88,  .y = 4 },
-        .right   = (PointInt2){ .x = 25 + 98,  .y = 4 },
-        .top     = (PointInt2){ .x = 25 + 83,  .y = 4 },
-        .bottom  = (PointInt2){ .x = 25 + 108, .y = 19 },
-        .front   = (PointInt2){ .x = 25 + 93,  .y = 4 },
-        .back    = (PointInt2){ .x = 25 + 103, .y = 4 },
+        .left    = (PointInt2){ .x = 60 + 10, .y = 31  },
+        .right   = (PointInt2){ .x = 60 + 0,  .y = 31 },
+        .top     = (PointInt2){ .x = 60 + 5,  .y = 26 },
+        .bottom  = (PointInt2){ .x = 60 + 5,  .y = 46 },
+        .front   = (PointInt2){ .x = 60 + 5,  .y = 31 },
+        .back    = (PointInt2){ .x = 60 + 15, .y = 31 },
         .x_width  = 5,
         .y_height = 15,
         .z_depth  = 5,
@@ -320,7 +320,7 @@ make_player_arm(
     float mb[16];
     mat_identity(ma);
 
-    mat_translate(mb, x, y + 1.5 / 16.0, z);
+    mat_translate(mb, x, y + 3.0 / 16.0, z);
     mat_multiply(ma, ma, mb);
 
     mat_rotate(mb, 0, 1, 0, brx);
