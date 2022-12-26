@@ -83,13 +83,13 @@ make_box(
         const float u1 = (faces_x[face] + faces_u_width[face]) / texturePixelWidth;
         const float v0 = 1.0 - (faces_y[face] / texturePixelHeight);
         const float v1 = 1.0 - ((faces_y[face] + faces_v_width[face]) / texturePixelHeight);
-        const int is_flipped_face = (ao[face][0] + ao[face][3]) > (ao[face][1] + ao[face][2]);
+        const int is_flipped_vertex = (ao[face][0] + ao[face][3]) > (ao[face][1] + ao[face][2]);
         for (int vertex_it = 0; vertex_it < 6; vertex_it++)
         {
             // 10 floats of data for each vertex...
 
             // vertex is index into the face's points
-            const int vertex = is_flipped_face ? flipped[face][vertex_it] : indices[face][vertex_it];
+            const int vertex = is_flipped_vertex ? flipped[face][vertex_it] : indices[face][vertex_it];
 
             // Write the position 3-vector
             *(data++) = center_x + extent_x * positions[face][vertex][0];
