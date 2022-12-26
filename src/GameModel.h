@@ -15,7 +15,6 @@
 
 #define MAX_CHUNKS 8192
 #define MAX_PLAYERS 128
-#define WORKERS 4
 #define MAX_TEXT_LENGTH 256
 #define MAX_PATH_LENGTH 256
 #define MAX_ADDR_LENGTH 256

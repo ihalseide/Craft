@@ -14,6 +14,7 @@
 #define USE_CACHE 1
 #define DAY_LENGTH 600
 #define INVERT_MOUSE 0
+#define WORKERS 4              // Number of worker threads
 
 // rendering options
 #define SHOW_LIGHTS 1
