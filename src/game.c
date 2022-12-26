@@ -994,12 +994,6 @@ int player_intersects_block(  // Returns non-zero if the player intersects the g
 {
     float ex, ey, ez;
     player_hitbox_extent(&ex, &ey, &ez);
-    box_broadphase(
-            x, y, z,
-            ex, ey, ez,
-            vx, vy, vz,
-            &x, &y, &z,
-            &ex, &ey, &ez);
     return box_intersect_block(x, y, z, ex, ey, ez, bx, by, bz);
 }
 
@@ -3104,7 +3098,7 @@ place_block(
     int hx, hy, hz;
     int hw = hit_test(g, 1, s->x, y, s->z, s->rx, s->ry, &hx, &hy, &hz);
     if (!(hy > 0 && hy < 256 && is_obstacle(hw))) { return 0; }
-    if (player_intersects_block(s->x, y, s->z, s->vx, s->vy, s->vz, hx, hy, hz)) { return 0; }
+    if (player_intersects_block(s->x, s->y, s->z, s->vx, s->vy, s->vz, hx, hy, hz)) { return 0; }
     set_block(g, hx, hy, hz, items[g->item_index]);
     record_block(g, hx, hy, hz, items[g->item_index]);
     return 1;
