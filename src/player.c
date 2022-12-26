@@ -213,7 +213,7 @@ make_player_leg(
         .left    = (PointInt2){ .x = 5,  .y = 53 },
         .right   = (PointInt2){ .x = 17, .y = 53 },
         .top     = (PointInt2){ .x = 11, .y = 47 },
-        .bottom  = (PointInt2){ .x = 11, .y = 38 },
+        .bottom  = (PointInt2){ .x = 11, .y = 68 },
         .front   = (PointInt2){ .x = 11, .y = 53 },
         .back    = (PointInt2){ .x = 23, .y = 53 },
         .x_width  = 6,
@@ -225,7 +225,7 @@ make_player_leg(
         .left    = (PointInt2){ .x = 30 + 5,  .y = 53 },
         .right   = (PointInt2){ .x = 30 + 17, .y = 53 },
         .top     = (PointInt2){ .x = 30 + 11, .y = 47 },
-        .bottom  = (PointInt2){ .x = 30 + 11, .y = 38 },
+        .bottom  = (PointInt2){ .x = 30 + 11, .y = 68 },
         .front   = (PointInt2){ .x = 30 + 11, .y = 53 },
         .back    = (PointInt2){ .x = 30 + 23, .y = 53 },
         .x_width  = 6,
@@ -331,6 +331,7 @@ void make_player(     // writes specific values to the data pointer
     const int offset = count * stride;
 
     float ao[6][4] = {0};
+    ao[0][0] = 1;
     float light[6][4] = {
         {0.8, 0.8, 0.8, 0.8},
         {0.8, 0.8, 0.8, 0.8},
