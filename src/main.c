@@ -569,7 +569,7 @@ main(
                 ty -= ts * 2;
             }
 
-            // Health debug text
+            /* Health debug text
             {
                 snprintf(text_buffer, sizeof(text_buffer),
                         "damage: %d",
@@ -577,6 +577,7 @@ main(
                 render_text(game, &text_attrib, ALIGN_LEFT, tx, ty, ts, text_buffer);
                 ty -= ts * 2;
             }
+            */
 
             // Chat text
             if (SHOW_CHAT_TEXT) {
@@ -610,6 +611,7 @@ main(
             }
 
             // show damage info for current block
+            /*
             {
                 State *s = &me->state;
                 int hx, hy, hz;
@@ -622,6 +624,7 @@ main(
                     }
                 }
             }
+            */
 
             // SWAP AND POLL //
             glfwSwapBuffers(game->window);
