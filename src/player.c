@@ -331,14 +331,13 @@ void make_player(     // writes specific values to the data pointer
     const int offset = count * stride;
 
     float ao[6][4] = {0};
-    ao[0][0] = 1;
     float light[6][4] = {
         {0.8, 0.8, 0.8, 0.8},
         {0.8, 0.8, 0.8, 0.8},
         {0.8, 0.8, 0.8, 0.8},
         {0.8, 0.8, 0.8, 0.8},
         {0.8, 0.8, 0.8, 0.8},
-        {0.8, 0.8, 0.8, 0.8}
+        {0.8, 0.8, 0.8, 0.8},
     };
 
     make_player_head(data, count, offset*0, stride,
