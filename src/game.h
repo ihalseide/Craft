@@ -223,11 +223,6 @@ create_chunk(
         int q);
 
 void
-create_ghost(
-        Model *g,
-        Player *p);
-
-void
 cube(
         Model *g,
         Block *b1,
@@ -253,11 +248,6 @@ delete_all_players(
 void
 delete_chunks(
         Model *g);
-
-void
-delete_ghost(
-        Model *g,
-        Player *p);
 
 void
 delete_player(
@@ -480,10 +470,6 @@ get_sight_vector(
         float *vx,
         float *vy,
         float *vz);
-
-int
-ghost_id(
-        int pid);
 
 void
 handle_mouse_input(

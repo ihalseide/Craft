@@ -2928,20 +2928,7 @@ parse_command(
     int server_port = DEFAULT_PORT;
     char filename[MAX_PATH_LENGTH];
     int radius, count, xc, yc, zc;
-    if (strcmp(buffer, "/ghost") == 0) {
-        // spawn ghost
-        Player *me = &g->players[0];
-        delete_ghost(g, me);
-        create_ghost(g, me);
-        add_message(g, "Added ghost");
-    }
-    else if (strcmp(buffer, "/noghost") == 0) {
-        // remove ghost
-        Player *me = &g->players[0];
-        delete_ghost(g, me);
-        add_message(g, "Removed ghost");
-    }
-    else if (sscanf(buffer, "/identity %128s %128s", username, token) == 2) {
+    if (sscanf(buffer, "/identity %128s %128s", username, token) == 2) {
         db_auth_set(username, token);
         add_message(g, "Successfully imported identity token!");
         login();
@@ -3713,43 +3700,6 @@ reset_model(
     set_default_physics(&g->physics);
 }
 
-
-// DEBUG
-int ghost_id(
-        int pid)
-{
-    return -9999 + pid;
-}
-
-// DEBUG
-// Create a player model "ghost" for given player
-void
-create_ghost(
-        Model *g,
-        Player *p)
-{
-    Player *player = g->players + g->player_count;
-    g->player_count++;
-    player->id = ghost_id(p->id);
-    player->buffer = 0;
-    snprintf(player->name, MAX_NAME_LENGTH, "ghost%d", p->id);
-    update_player(player, p->state.x, p->state.y, p->state.z,
-            p->state.rx, p->state.ry, 1);
-    update_player(player, p->state.x, p->state.y, p->state.z,
-            p->state.rx, p->state.ry, 1);
-    player->state.brx = player->state.rx;
-}
-
-// DEBUG
-void
-delete_ghost(
-        Model *g,
-        Player *p)
-{
-    if (p) {
-        delete_player(g, ghost_id(p->id));
-    }
-}
 
 // Get whether a certain block face is covered or exposed.
 // A face is exposed unless an obstacle block is in front of it.
