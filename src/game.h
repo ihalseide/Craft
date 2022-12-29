@@ -209,6 +209,7 @@ chunked(
 
 void
 compute_chunk(
+        Model *g,
         WorkerItem *item);
 
 void
@@ -382,6 +383,7 @@ gen_crosshair_buffer();
 
 GLuint
 gen_cube_buffer(
+        const Model *g,
         float x,
         float y,
         float z,

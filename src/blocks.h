@@ -3,36 +3,12 @@
 
 
 #include "GameModel.h"
+#include "Block.h"
 #include "texturedBox.h"
 #include <stdbool.h>
 
 
 typedef int BlockKind;
-
-
-typedef struct
-{
-    int texture_tile_index;
-    TextureFlipCode flip_code;
-}
-BlockFaceInfo;
-
-
-typedef struct BlockProperties
-{
-    BlockFaceInfo left_face;
-    BlockFaceInfo right_face;
-    BlockFaceInfo top_face;
-    BlockFaceInfo bottom_face;
-    BlockFaceInfo front_face;
-    BlockFaceInfo back_face;
-    int max_damage;         // if this is <= 0, then it is indestructable
-    int min_damage_change;
-    bool is_plant;
-    bool is_obstacle;
-    bool is_transparent;
-}
-BlockProperties;
 
 
 bool

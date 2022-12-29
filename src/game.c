@@ -1,11 +1,11 @@
 #include "auth.h"
+#include "blocks.h"
 #include "client.h"
 #include "config.h"
 #include "cube.h"
 #include "db.h"
 #include "game.h"
 #include "hitbox.h"
-#include "blocks.h"
 #include "map.h"
 #include "matrix.h"
 #include "noise.h"
@@ -20,6 +20,7 @@
 #include <assert.h>
 #include <limits.h>
 #include <math.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -250,6 +251,7 @@ GLuint gen_sky_buffer()
 // Returns:
 // - OpenGL buffer handle
 GLuint gen_cube_buffer(
+        const Model *g,
         float x,
         float y,
         float z,
@@ -268,7 +270,7 @@ GLuint gen_cube_buffer(
         {0.5, 0.5, 0.5, 0.5},
         {0.5, 0.5, 0.5, 0.5}
     };
-    make_cube(data, ao, light, 1, 1, 1, 1, 1, 1, x, y, z, n, w);
+    make_cube(g, data, ao, light, 1, 1, 1, 1, 1, 1, x, y, z, n, w);
     return gen_faces(10, 6, data);
 }
 
@@ -1270,6 +1272,7 @@ void light_fill(
 // - item
 // Returns: none
 void compute_chunk(
+        Model *g,
         WorkerItem *item)
 {
     char *opaque = (char *)calloc(XZ_SIZE * XZ_SIZE * Y_SIZE, sizeof(char));
@@ -1313,8 +1316,7 @@ void compute_chunk(
                     continue;
                 }
                 // END TODO
-                //opaque[XYZ(x, y, z)] = !block_is_transparent(g, w); // TODO actually check this
-                opaque[XYZ(x, y, z)] = 1;
+                opaque[XYZ(x, y, z)] = !block_is_transparent(g, w);
                 if (opaque[XYZ(x, y, z)]) {
                     highest[XZ(x, z)] = MAX(highest[XZ(x, z)], y);
                 }
@@ -1363,7 +1365,7 @@ void compute_chunk(
         if (total == 0) {
             continue;
         }
-        if (block_is_plant(item->game_model, ew)) {
+        if (block_is_plant(g, ew)) {
             total = 4;
         }
         miny = MIN(miny, ey);
@@ -1416,7 +1418,7 @@ void compute_chunk(
         float ao[6][4];
         float light[6][4];
         occlusion(neighbors, lights, shades, ao, light);
-        if (block_is_plant(item->game_model, ew)) {
+        if (block_is_plant(g, ew)) {
             total = 4;
             float min_ao = 1;
             float max_light = 0;
@@ -1433,6 +1435,7 @@ void compute_chunk(
         }
         else {
             make_cube(
+                    g,
                     data + offset, ao, light,
                     f1, f2, f3, f4, f5, f6,
                     ex, ey, ez, 0.5, ew);
@@ -1495,7 +1498,7 @@ void gen_chunk_buffer(
             }
         }
     }
-    compute_chunk(item);
+    compute_chunk(g, item);
     generate_chunk(chunk, item);
     chunk->dirty = 0;
 }
@@ -1900,7 +1903,7 @@ int worker_run(
         if (item->load) {
             load_chunk(item);
         }
-        compute_chunk(item);
+        compute_chunk(worker->game_model, item);
         mtx_lock(&worker->mtx);
         worker->state = WORKER_DONE;
         mtx_unlock(&worker->mtx);
@@ -2099,14 +2102,12 @@ void _set_block(
     else {
         db_insert_block(p, q, x, y, z, w);
     }
-    // Reset damage for deleted blocks
-    if (w == 0) {
-        map_set(&chunk->damage, x, y, z, 0);
-    }
-    // If a block is removed, then remove any signs and light source from that block.
+    // If a block is removed, and this is the right chunk,
+    // then remove any signs, damage, and light source from that block.
     if (w == 0 && chunked(x) == p && chunked(z) == q) {
         unset_sign(g, x, y, z);
         set_light(g, p, q, x, y, z, 0);
+        map_set(&chunk->damage, x, y, z, 0);
     }
 }
 
@@ -2130,7 +2131,7 @@ void set_block(
             if (dx == 0 && dz == 0) { continue; }
             if (dx && chunked(x + dx) == p) { continue; }
             if (dz && chunked(z + dz) == q) { continue; }
-            _set_block(g, p + dx, q + dz, x, y, z, -w, 1);
+            _set_block(g, p + dx, q + dz, x, y, z, -w, 1);  // TODO: why is this negative?
         }
     }
     client_block(x, y, z, w);
@@ -2553,7 +2554,7 @@ render_item(
         del_buffer(buffer);
     }
     else {
-        GLuint buffer = gen_cube_buffer(0, 0, 0, 0.5, w);
+        GLuint buffer = gen_cube_buffer(g, 0, 0, 0, 0.5, w);
         draw_cube(attrib, buffer);
         del_buffer(buffer);
     }
@@ -2930,10 +2931,20 @@ parse_command(
     int server_port = DEFAULT_PORT;
     char filename[MAX_PATH_LENGTH];
     int radius, count, xc, yc, zc;
+    //if (strcmp(buffer, "/setblock")==0)
+    //{
+    //    set_block(g, g->players[0].state.x, g->players[0].state.y, g->players[0].state.z, 1);
+    //}
+    //else
     if (sscanf(buffer, "/identity %128s %128s", username, token) == 2) {
         db_auth_set(username, token);
         add_message(g, "Successfully imported identity token!");
         login();
+    }
+    else if (sscanf(buffer, "/tp %d %d", &xc, &zc) == 2)
+    {
+        g->players[0].state.x = xc;
+        g->players[0].state.z = zc;
     }
     else if (strcmp(buffer, "/logout") == 0) {
         db_auth_select_none();
@@ -3041,12 +3052,6 @@ parse_command(
     else if (sscanf(buffer, "/cylinder %d", &radius) == 1) {
         // Place an unfilled cylinder with a radius
         cylinder(g, &g->block0, &g->block1, radius, 0);
-    }
-    else if (sscanf(buffer, "/damage %d", &radius) == 1) {
-        char out[30];
-        snprintf(out, sizeof(out), "set attack_damage=%d", radius);
-        add_message(g, out);
-        g->players[0].attrs.attack_damage = radius;
     }
     else if (sscanf(buffer, "/reach %d", &radius) == 1) {
         char out[30];
@@ -3677,6 +3682,18 @@ static void set_default_physics(
 }
 
 
+static
+BlockProperties *
+game_get_block_by_id(
+        Model *g,
+        BlockKind w)
+{
+    assert(w > 0);
+    BlockProperties *properties = &g->the_block_types[w - 1];
+    return properties;
+}
+
+
 static 
 BlockFaceInfo *
 game_block_get_face(
@@ -3684,7 +3701,7 @@ game_block_get_face(
         BlockKind w,
         int face_index)
 {
-    BlockProperties *properties = &g->the_block_types[w - 1];
+    BlockProperties *properties = game_get_block_by_id(g, w);
     switch (face_index)
     {
     case 0: return &properties->left_face;
@@ -3706,9 +3723,7 @@ game_block_set_face_tile_index(
         int face_index,
         int tile_number)
 {
-    BlockFaceInfo *face = game_block_get_face(g, w, face_index);
-    assert(face);
-    face->texture_tile_index = tile_number;
+    game_block_get_face(g, w, face_index)->texture_tile_index = tile_number;
 }
 
 
@@ -3726,17 +3741,46 @@ game_block_set_all_faces_tile_index(
 }
 
 
+static void
+game_block_set_obstacle(
+        Model *g,
+        BlockKind w)
+{
+    game_get_block_by_id(g, w)->is_obstacle = true;
+}
+
+
+static void
+game_block_set_max_damage(
+        Model *g,
+        BlockKind w,
+        int max_damage)
+{
+    game_get_block_by_id(g, w)->max_damage = max_damage;
+}
+
+
+static void
+game_block_set_min_damage_change(
+        Model *g,
+        BlockKind w,
+        int min_damage_change)
+{
+    game_get_block_by_id(g, w)->min_damage_change = min_damage_change;
+}
+
+
 static
 void
 game_create_standard_blocks(
         Model *g)
 {
-    g->the_block_types_count = 1;
-    g->the_block_types = calloc(g->the_block_types_count, sizeof(*g->the_block_types));
-    assert(g->the_block_types);
-
-    game_block_set_all_faces_tile_index(g, 1, 244);
-    printf("blocks created\n");
+    g->the_block_types_count = sizeof(g->the_block_types) / sizeof(g->the_block_types[0]);
+    BlockKind this_block = 1;
+    game_block_set_all_faces_tile_index(g, this_block, 245);
+    game_block_set_obstacle(g, this_block);
+    game_block_set_max_damage(g, this_block, 50);
+    game_block_set_min_damage_change(g, this_block, 3);
 }
 
 

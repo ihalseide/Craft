@@ -9,10 +9,18 @@ void create_world(
         world_func func,
         void *arg) 
 {
-    return;
-    if (p == 0 && q == 0)
+    if (1||(p == 0) || (q == 0))
     {
-        func(0, 0, 0, 1, arg);
+        for (int cx = 0; cx < CHUNK_SIZE; cx++)
+        {
+            for (int cz = 0; cz < CHUNK_SIZE; cz++)
+            {
+                int x = p * CHUNK_SIZE + cx; // convert p (chunk x) and dx to world x
+                int z = q * CHUNK_SIZE + cz; // convert q (chunk z) and dz to world z
+                int block = 1;
+                func(x, 0, z, block, arg);
+            }
+        }
     }
 }
 

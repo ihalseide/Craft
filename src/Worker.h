@@ -15,6 +15,7 @@ enum
 };
 
 
+// Forward-declare
 struct Model;
 
 
@@ -31,7 +32,6 @@ typedef struct
     int maxy;
     int faces;
     GLfloat *data;
-    const struct Model *game_model;
 }
 WorkerItem;
 
@@ -44,6 +44,7 @@ typedef struct
     mtx_t mtx;        // mutex
     cnd_t cnd;        // condition
     WorkerItem item;
+    struct Model *game_model;
 }
 Worker;
 

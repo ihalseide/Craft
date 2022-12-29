@@ -97,7 +97,7 @@ typedef struct Model
     Block copy0;
     Block copy1;
     PhysicsConfig physics;
-    struct BlockProperties *the_block_types;
+    BlockProperties the_block_types[1];
     int the_block_types_count;
 }
 Model;

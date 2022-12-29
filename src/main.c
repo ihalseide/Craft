@@ -17,8 +17,10 @@
 #include <time.h>
 
 
+// Holds all of the game state (except for dynamic memory)
+// TODO: put all memory in the game model
 static Model game_model = {0};
-static Model *game = &game_model;
+static Model * const game = &game_model;
 
 
 // Handle key press callback
@@ -269,7 +271,6 @@ main(
         int argc,
         char **argv) 
 {
-
     // INITIALIZATION //
     curl_global_init(CURL_GLOBAL_DEFAULT);
     srand(time(NULL));
@@ -406,6 +407,7 @@ main(
         Worker *worker = game->workers + i;
         worker->index = i;
         worker->state = WORKER_IDLE;
+        worker->game_model = game;
         mtx_init(&worker->mtx, mtx_plain);
         cnd_init(&worker->cnd);
         thrd_create(&worker->thrd, worker_run, worker);
@@ -455,7 +457,7 @@ main(
         me->id = 0;
         me->name[0] = '\0';
         me->buffer = 0;
-        me->attrs.attack_damage = 1;
+        me->attrs.attack_damage = 1000;
         me->attrs.reach = 8;
         game->player_count = 1;
         //printf("player damage is %d\n", me->attrs.attack_damage);

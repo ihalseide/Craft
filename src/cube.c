@@ -1,3 +1,4 @@
+#include "blocks.h"
 #include "cube.h"
 #include "item.h"
 #include "matrix.h"
@@ -9,6 +10,7 @@
 
 // Make a cube model for a block
 void make_cube(                   // writes specific values to the data pointer
+        const Model *g,
         float *data,              // output pointer
         const float ao[6][4],
         const float light[6][4],
@@ -26,7 +28,7 @@ void make_cube(                   // writes specific values to the data pointer
 {
     // Get blocks texture faces (the blocks lookup table is defined in item.c)
     TexturedBox textured_box;
-    get_textured_box_for_block(w, left, right, top, bottom, front, back, &textured_box);
+    get_textured_box_for_block(g, w, left, right, top, bottom, front, back, &textured_box);
     make_box(data, ao, light, &textured_box, x, y, z);
 }
 

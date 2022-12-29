@@ -2,7 +2,11 @@
 #define _cube_h_
 
 
+#include "GameModel.h"
+
+
 void make_cube(
+        const Model *g,
         float *data,
         const float ao[6][4],
         const float light[6][4],
