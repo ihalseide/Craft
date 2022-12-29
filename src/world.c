@@ -3,20 +3,34 @@
 #include "world.h"
 
 
-// Main terrain generation function
-// Parameters:
-// - p: chunk p location
-// - q: chunk q location
-// - func: function callback to modify blocks in the world (see world.h)
-// - arg: last argument to be used for the function callback
 void create_world(
         int p,
         int q,
         world_func func,
         void *arg) 
 {
+    return;
+    if (p == 0 && q == 0)
+    {
+        func(0, 0, 0, 1, arg);
+    }
+}
+
+
+// Main terrain generation function
+// Parameters:
+// - p: chunk p location
+// - q: chunk q location
+// - func: function callback to modify blocks in the world (see world.h)
+// - arg: last argument to be used for the function callback
+void create_world2(
+        int p,
+        int q,
+        world_func func,
+        void *arg) 
+{
     // GUESS: the inclusion of the extra pad locations is for tree generation across chunk borders.
-    int pad = 1;
+    const int pad = 1;
     // Loop for each (x, z) location in chunk (p, q):
     for (int dx = -pad; dx < CHUNK_SIZE + pad; dx++) {
         for (int dz = -pad; dz < CHUNK_SIZE + pad; dz++) {

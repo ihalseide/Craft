@@ -1,4 +1,5 @@
 #include "auth.h"
+#include "blocks.h"
 #include "client.h"
 #include "config.h"
 #include "db.h"
@@ -112,13 +113,15 @@ on_key(
             game->item_index = 9;
         }
         if (key == CRAFT_KEY_ITEM_NEXT) {
-            game->item_index = (game->item_index + 1) % item_count;
+            // TODO: implement
+            //game->item_index = (game->item_index + 1) % item_count;
         }
         if (key == CRAFT_KEY_ITEM_PREV) {
-            game->item_index--;
-            if (game->item_index < 0) {
-                game->item_index = item_count - 1;
-            }
+            // TODO: implement
+            //game->item_index--;
+            //if (game->item_index < 0) {
+            //    game->item_index = item_count - 1;
+            //}
         }
         if (key == CRAFT_KEY_OBSERVE) {
             game->observe1 = (game->observe1 + 1) % game->player_count;
@@ -175,19 +178,21 @@ on_scroll(
         double /*xdelta*/,        // change in x scroll
         double ydelta)            // change in y scroll
 {
-    static double ypos = 0;
-    ypos += ydelta;
-    if (ypos < -SCROLL_THRESHOLD) {
-        game->item_index = (game->item_index + 1) % item_count;
-        ypos = 0;
-    }
-    if (ypos > SCROLL_THRESHOLD) {
-        game->item_index--;
-        if (game->item_index < 0) {
-            game->item_index = item_count - 1;
-        }
-        ypos = 0;
-    }
+    return;
+    // TODO: implement
+    //static double ypos = 0;
+    //ypos += ydelta;
+    //if (ypos < -SCROLL_THRESHOLD) {
+    //    game->item_index = (game->item_index + 1) % item_count;
+    //    ypos = 0;
+    //}
+    //if (ypos > SCROLL_THRESHOLD) {
+    //    game->item_index--;
+    //    if (game->item_index < 0) {
+    //        game->item_index = item_count - 1;
+    //    }
+    //    ypos = 0;
+    //}
 }
 
 

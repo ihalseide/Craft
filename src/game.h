@@ -196,7 +196,7 @@ chunk_distance(
 
 int 
 chunk_visible(
-        Model *g,
+        const Model *g,
         float planes[6][4],
         int p,
         int q,

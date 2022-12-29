@@ -7,15 +7,20 @@
 #include <tinycthread.h>
 
 
-enum {
+enum
+{
     WORKER_IDLE = 0,
     WORKER_BUSY = 1,
     WORKER_DONE = 2,
 };
 
 
+struct Model;
+
+
 // A single item that a Worker can work on
-typedef struct {
+typedef struct
+{
     int p;                   // chunked X
     int q;                   // chunked Z
     int load;
@@ -26,17 +31,21 @@ typedef struct {
     int maxy;
     int faces;
     GLfloat *data;
-} WorkerItem;
+    const struct Model *game_model;
+}
+WorkerItem;
 
 
-typedef struct {
+typedef struct
+{
     int index;
     int state;
     thrd_t thrd;      // thread
     mtx_t mtx;        // mutex
     cnd_t cnd;        // condition
     WorkerItem item;
-} Worker;
+}
+Worker;
 
 
 #endif

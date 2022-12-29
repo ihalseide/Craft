@@ -5,7 +5,7 @@
 #include "db.h"
 #include "game.h"
 #include "hitbox.h"
-#include "item.h"
+#include "blocks.h"
 #include "map.h"
 #include "matrix.h"
 #include "noise.h"
@@ -740,7 +740,7 @@ int chunk_distance(
 // Returns:
 // - non-zero if the chunk is visible
 int chunk_visible(
-        Model *g,
+        const Model *g,
         float planes[6][4],
         int p,
         int q,
@@ -807,7 +807,7 @@ int highest_block(
     if (chunk) {
         Map *map = &chunk->map;
         MAP_FOR_EACH(map, ex, ey, ez, ew) {
-            if (is_obstacle(ew) && ex == nx && ez == nz) {
+            if (block_is_obstacle(g, ew) && ex == nx && ez == nz) {
                 result = MAX(result, ey);
             }
         } END_MAP_FOR_EACH;
@@ -948,7 +948,7 @@ int hit_test_face(
     State *s = &player->state;
     float eye_y = player_eye_y(s->y);
     int w = hit_test(g, 0, s->x, eye_y, s->z, s->rx, s->ry, x, y, z);
-    if (is_obstacle(w)) {
+    if (block_is_obstacle(g, w)) {
         int hx, hy, hz;
         hit_test(g, 1, s->x, eye_y, s->z, s->rx, s->ry, &hx, &hy, &hz);
         int dx = hx - *x;
@@ -1313,7 +1313,8 @@ void compute_chunk(
                     continue;
                 }
                 // END TODO
-                opaque[XYZ(x, y, z)] = !is_transparent(w);
+                //opaque[XYZ(x, y, z)] = !block_is_transparent(g, w); // TODO actually check this
+                opaque[XYZ(x, y, z)] = 1;
                 if (opaque[XYZ(x, y, z)]) {
                     highest[XZ(x, z)] = MAX(highest[XZ(x, z)], y);
                 }
@@ -1362,7 +1363,7 @@ void compute_chunk(
         if (total == 0) {
             continue;
         }
-        if (is_plant(ew)) {
+        if (block_is_plant(item->game_model, ew)) {
             total = 4;
         }
         miny = MIN(miny, ey);
@@ -1415,7 +1416,7 @@ void compute_chunk(
         float ao[6][4];
         float light[6][4];
         occlusion(neighbors, lights, shades, ao, light);
-        if (is_plant(ew)) {
+        if (block_is_plant(item->game_model, ew)) {
             total = 4;
             float min_ao = 1;
             float max_light = 0;
@@ -2243,10 +2244,10 @@ add_block_damage(
 {
     int w, initial_damage;
     if (!get_block_and_damage(g, x, y, z, &w, &initial_damage)) { return 0; }
-    if (damage < block_get_min_damage_threshold(w)) { return 0; }
+    if (damage < block_get_min_damage_threshold(g, w)) { return 0; }
     int new_damage = initial_damage + damage;
     set_block_damage(g, x, y, z, new_damage);
-    return new_damage >= block_get_max_damage(w);
+    return new_damage >= block_get_max_damage(g, w);
 }
 
 
@@ -2263,7 +2264,7 @@ builder_block(
         int w)
 {
     if (y <= 0 || y >= 256) { return; }
-    if (is_destructable(get_block(g, x, y, z))) {
+    if (block_is_destructable(g, get_block(g, x, y, z))) {
         set_block(g, x, y, z, 0);
     }
     if (w) {
@@ -2445,7 +2446,7 @@ render_wireframe(
     set_matrix_3d_player_camera(g, matrix, player);
     int hx, hy, hz;
     int hw = hit_test(g, 0, s->x, eye_y, s->z, s->rx, s->ry, &hx, &hy, &hz);
-    if (is_obstacle(hw)) {
+    if (block_is_obstacle(g, hw)) {
         glUseProgram(attrib->program);
         glLineWidth(1);
         glEnable(GL_COLOR_LOGIC_OP);
@@ -2544,8 +2545,9 @@ render_item(
     glUniform3f(attrib->camera, 0, 0, 5);
     glUniform1i(attrib->sampler, 0);
     glUniform1f(attrib->timer, time_of_day(g));
-    int w = items[g->item_index];
-    if (is_plant(w)) {
+    //int w = items[g->item_index];  // TODO get this
+    int w = 1;
+    if (block_is_plant(g, w)) {
         GLuint buffer = gen_plant_buffer(0, 0, 0, 0.5, w);
         draw_plant(attrib, buffer);
         del_buffer(buffer);
@@ -3069,7 +3071,7 @@ on_light(
     float y = player_eye_y(s->y);
     int hx, hy, hz;
     int hw = hit_test(g, 0, s->x, y, s->z, s->rx, s->ry, &hx, &hy, &hz);
-    if (hy > 0 && hy < 256 && is_destructable(hw)) {
+    if (hy > 0 && hy < 256 && block_is_destructable(g, hw)) {
         toggle_light(g, hx, hy, hz);
     }
 }
@@ -3084,10 +3086,12 @@ place_block(
     float y = player_eye_y(s->y);
     int hx, hy, hz;
     int hw = hit_test(g, 1, s->x, y, s->z, s->rx, s->ry, &hx, &hy, &hz);
-    if (!(hy > 0 && hy < 256 && is_obstacle(hw))) { return 0; }
+    if (!(hy > 0 && hy < 256 && block_is_obstacle(g, hw))) { return 0; }
     if (player_intersects_block(s->x, s->y, s->z, s->vx, s->vy, s->vz, hx, hy, hz)) { return 0; }
-    set_block(g, hx, hy, hz, items[g->item_index]);
-    record_block(g, hx, hy, hz, items[g->item_index]);
+    //set_block(g, hx, hy, hz, items[g->item_index]);
+    set_block(g, hx, hy, hz, 1);
+    //record_block(g, hx, hy, hz, items[g->item_index]);
+    record_block(g, hx, hy, hz, 1);
     return 1;
 }
 
@@ -3103,7 +3107,7 @@ break_block(
     int hw = hit_test(g, 0, s->x, y, s->z, s->rx, s->ry, &hx, &hy, &hz);
 
     // Only break blocks that are in bounds and are destructable
-    if (!(hy > 0 && hy < 256 && is_destructable(hw))) {
+    if (!(hy > 0 && hy < 256 && block_is_destructable(g, hw))) {
         return 0;
     }
 
@@ -3113,7 +3117,7 @@ break_block(
 
     set_block(g, hx, hy, hz, 0);
     record_block(g, hx, hy, hz, 0);
-    if (is_plant(get_block(g, hx, hy + 1, hz))) {
+    if (block_is_plant(g, get_block(g, hx, hy + 1, hz))) {
         set_block(g, hx, hy + 1, hz, 0);
     }
     return 1;
@@ -3154,16 +3158,17 @@ void
 on_middle_click(
         Model *g) 
 {
-    State *s = &g->players->state;
-    float y = player_eye_y(s->y);
-    int hx, hy, hz;
-    int hw = hit_test(g, 0, s->x, y, s->z, s->rx, s->ry, &hx, &hy, &hz);
-    for (int i = 0; i < item_count; i++) {
-        if (items[i] == hw) {
-            g->item_index = i;
-            break;
-        }
-    }
+    return; // TODO: implement block picking perhaps?
+    //State *s = &g->players->state;
+    //float y = player_eye_y(s->y);
+    //int hx, hy, hz;
+    //int hw = hit_test(g, 0, s->x, y, s->z, s->rx, s->ry, &hx, &hy, &hz);
+    //for (int i = 0; i < item_count; i++) {
+    //    if (items[i] == hw) {
+    //        g->item_index = i;
+    //        break;
+    //    }
+    //}
 }
 
 
@@ -3672,6 +3677,69 @@ static void set_default_physics(
 }
 
 
+static 
+BlockFaceInfo *
+game_block_get_face(
+        Model *g,
+        BlockKind w,
+        int face_index)
+{
+    BlockProperties *properties = &g->the_block_types[w - 1];
+    switch (face_index)
+    {
+    case 0: return &properties->left_face;
+    case 1: return &properties->right_face;
+    case 2: return &properties->top_face;
+    case 3: return &properties->bottom_face;
+    case 4: return &properties->front_face;
+    case 5: return &properties->back_face;
+    default: return NULL;
+    }
+}
+
+
+static
+void
+game_block_set_face_tile_index(
+        Model *g,
+        BlockKind w,
+        int face_index,
+        int tile_number)
+{
+    BlockFaceInfo *face = game_block_get_face(g, w, face_index);
+    assert(face);
+    face->texture_tile_index = tile_number;
+}
+
+
+static
+void
+game_block_set_all_faces_tile_index(
+        Model *g,
+        BlockKind w,
+        int tile_number)
+{
+    for (int i = 0; i < 6; i++)
+    {
+        game_block_set_face_tile_index(g, w, i, tile_number);
+    }
+}
+
+
+static
+void
+game_create_standard_blocks(
+        Model *g)
+{
+    g->the_block_types_count = 1;
+    g->the_block_types = calloc(g->the_block_types_count, sizeof(*g->the_block_types));
+    assert(g->the_block_types);
+
+    game_block_set_all_faces_tile_index(g, 1, 244);
+    printf("blocks created\n");
+}
+
+
 // Reset the game model
 // Arguments: none
 // Returns:
@@ -3695,6 +3763,8 @@ reset_model(
     g->day_length = DAY_LENGTH;
     glfwSetTime(g->day_length / 3.0);
     g->time_changed = 1;
+
+    game_create_standard_blocks(g);
 
     // Default physics
     set_default_physics(&g->physics);
@@ -3720,7 +3790,7 @@ is_block_face_covered(
 {
     assert(nx != 0.0 || ny != 0.0 || nz != 0.0);
     int w = get_block(g, roundf(x + nx), roundf(y + ny), roundf(z + nz));
-    return is_obstacle(w);
+    return block_is_obstacle(g, w);
 }
 
 
@@ -3751,7 +3821,7 @@ box_intersect_world(
         for (int by = y0; by <= y1; by++) {
             for (int bz = z0; bz <= z1; bz++) {
                 int w = get_block(g, bx, by, bz);
-                if (!is_obstacle(w)) {
+                if (!block_is_obstacle(g, w)) {
                     continue;
                 }
                 if (!box_intersect_block(x, y, z, ex, ey, ez, bx, by, bz)) {
@@ -3827,7 +3897,7 @@ box_sweep_world(
                 if (bx == cx && by == cy && bz == cz) { continue; }
                 // Only collide with obstacle blocks
                 int w = get_block(g, bx, by, bz);
-                if (!is_obstacle(w)) { continue; }
+                if (!block_is_obstacle(g, w)) { continue; }
                 // Box must intersect the broad-phase bounding box
                 if (!box_intersect_block(bbx, bby, bbz, bbex, bbey, bbez, bx, by, bz)) {
                     continue;
@@ -3894,3 +3964,14 @@ set_matrix_3d_player_camera(  // Everything except the player pointer is output
             g->ortho,
             g->render_radius);
 }
+
+
+int
+game_get_block_props(
+        const Model *g,
+        BlockProperties **out_block_props)
+{
+    *out_block_props = g->the_block_types;
+    return g->the_block_types_count;
+}
+

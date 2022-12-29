@@ -73,8 +73,10 @@ void make_plant(       // writes specific values to the data pointer
     float a = 0;
     float b = s;
     // Convert texture tile number to texture pixel coordinates
-    float du = (plants[w] % 16) * s;
-    float dv = (plants[w] / 16) * s;
+    //float du = (plants[w] % 16) * s;
+    //float dv = (plants[w] / 16) * s;
+    float du = 0.5;
+    float dv = 0.5;
     for (int i = 0; i < 4; i++) {
         for (int v = 0; v < 6; v++) {
             int j = indices[i][v];
