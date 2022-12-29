@@ -1,4 +1,5 @@
 #include "item.h"
+#include "texturedBox.h"
 #include "util.h"
 #include <assert.h>
 
@@ -222,26 +223,35 @@ get_texture_coordinates_for_block_if_yes(
         int yes,
         int texture_tile_id)
 {
-    int x, y;
-    if (yes)
+    if (!yes)
     {
-        x = block_type_get_texture_x(texture_tile_id);
-        y = block_type_get_texture_y(texture_tile_id);
-//        if (texture_tile_id == GRASS)
-//        {
-//            x = 0;
-//            y = 224;
-//        }
-        assert(x >= 0);
-        assert(y >= 0);
+        out_texture_point->x = -1;
+        out_texture_point->y = -1;
+        return;
     }
-    else
-    {
-        x = -1;
-        y = -1;
-    }
+
+    int x = block_type_get_texture_x(texture_tile_id);
+    int y = block_type_get_texture_y(texture_tile_id);
+    assert(x >= 0);
+    assert(y >= 0);
     out_texture_point->x = x;
     out_texture_point->y = y;
+}
+
+
+static
+void
+get_texture_flips_for_block(
+        int w,
+        TexturedBox *out_textured_box)
+{
+    TexturedBox *o = out_textured_box;
+    o->left_flip = TextureFlipCode_FLIP_NONE;
+    o->right_flip = TextureFlipCode_FLIP_NONE;
+    o->top_flip = TextureFlipCode_FLIP_NONE;
+    o->bottom_flip = TextureFlipCode_FLIP_NONE;
+    o->front_flip = TextureFlipCode_FLIP_NONE;
+    o->back_flip = TextureFlipCode_FLIP_NONE;
 }
 
 
@@ -256,17 +266,22 @@ get_textured_box_for_block(
         int back,                       // whether to generate the back   face or not
         TexturedBox *out_textured_box)  // where to put the result
 {
-    /* Tip: change pixelsPerBlock to a smaller number than 16 to visually debug block faces! */
-    const int pixelsPerBlock = 16;
+
     TexturedBox *o = out_textured_box;
-    o->x_width  = pixelsPerBlock;
-    o->y_height = pixelsPerBlock;
-    o->z_depth  = pixelsPerBlock;
+
+    /* Tip: change `pixels_per_block` to a smaller number than 16 to visually debug block faces! */
+    const int pixels_per_block = 16;
+    o->x_width  = pixels_per_block;
+    o->y_height = pixels_per_block;
+    o->z_depth  = pixels_per_block;
+
     get_texture_coordinates_for_block_if_yes(&o->left,   left,   blocks[w][0]);
     get_texture_coordinates_for_block_if_yes(&o->right,  right,  blocks[w][1]);
     get_texture_coordinates_for_block_if_yes(&o->top,    top,    blocks[w][2]);
     get_texture_coordinates_for_block_if_yes(&o->bottom, bottom, blocks[w][3]);
     get_texture_coordinates_for_block_if_yes(&o->front,  front,  blocks[w][4]);
     get_texture_coordinates_for_block_if_yes(&o->back,   back,   blocks[w][5]);
+
+    get_texture_flips_for_block(w, o);
 }
 

@@ -31,7 +31,7 @@ make_box(
         {0, 0, +1}
     };
     // 6 faces each with 4 points, each of which are 2-vectors
-    static const float uvs[6][4][2] = {
+    static const int uvs[6][4][2] = {
         {{0, 0}, {1, 0}, {0, 1}, {1, 1}},
         {{1, 0}, {0, 0}, {1, 1}, {0, 1}},
         {{0, 1}, {0, 0}, {1, 1}, {1, 0}},
@@ -65,6 +65,8 @@ make_box(
                                  boxTexture->x_width, boxTexture->x_width, boxTexture->x_width };
     const int faces_v_width[6] = { boxTexture->y_height, boxTexture->y_height, boxTexture->z_depth,
                                   boxTexture->z_depth, boxTexture->y_height, boxTexture->y_height};
+    const int faces_texture_flipped_flag[6] = { boxTexture->left_flip, boxTexture->right_flip, boxTexture->top_flip,
+                                                boxTexture->bottom_flip, boxTexture->front_flip, boxTexture->back_flip };
     const float pixelsPerBlock = 16;
     const float texturePixelWidth = 256;
     const float texturePixelHeight = 256;
@@ -84,6 +86,10 @@ make_box(
         const float v0 = 1.0 - (faces_y[face] / texturePixelHeight);
         const float v1 = 1.0 - ((faces_y[face] + faces_v_width[face]) / texturePixelHeight);
         const int is_flipped_vertex = (ao[face][0] + ao[face][3]) > (ao[face][1] + ao[face][2]);
+        const int face_flip_code = faces_texture_flipped_flag[face];
+        const int is_flip_u = (face_flip_code == TextureFlipCode_FLIP_U) || (face_flip_code == TextureFlipCode_FLIP_UV);
+        const int is_flip_v = (face_flip_code == TextureFlipCode_FLIP_V) || (face_flip_code == TextureFlipCode_FLIP_UV);
+
         for (int vertex_it = 0; vertex_it < 6; vertex_it++)
         {
             // 10 floats of data for each vertex...
@@ -100,8 +106,8 @@ make_box(
             *(data++) = normals[face][1];
             *(data++) = normals[face][2];
             // Write the the UV
-            *(data++) = uvs[face][vertex][0] ? u0 : u1;
-            *(data++) = uvs[face][vertex][1] ? v0 : v1;
+            *(data++) = (uvs[face][vertex][0] ^ is_flip_u) ? u0 : u1;
+            *(data++) = (uvs[face][vertex][1] ^ is_flip_v) ? v0 : v1;
             // ataWrite ao and light data
             *(data++) = ao[face][vertex];
             *(data++) = light[face][vertex];

@@ -5,7 +5,7 @@
 #include "hitbox.h"
 
 
-typedef struct PointInt2
+typedef struct
 {
     int x;
     int y;
@@ -13,7 +13,17 @@ typedef struct PointInt2
 PointInt2;
 
 
-typedef struct TexturedBox
+typedef enum
+{
+    TextureFlipCode_FLIP_NONE = 0,
+    TextureFlipCode_FLIP_U = 1,
+    TextureFlipCode_FLIP_V = 2,
+    TextureFlipCode_FLIP_UV = 3,
+}
+TextureFlipCode;
+
+
+typedef struct
 {
     PointInt2 left;
     PointInt2 right;
@@ -21,6 +31,12 @@ typedef struct TexturedBox
     PointInt2 bottom;
     PointInt2 front;
     PointInt2 back;
+    TextureFlipCode left_flip;
+    TextureFlipCode right_flip;
+    TextureFlipCode top_flip;
+    TextureFlipCode bottom_flip;
+    TextureFlipCode front_flip;
+    TextureFlipCode back_flip;
     int x_width;
     int y_height;
     int z_depth;
