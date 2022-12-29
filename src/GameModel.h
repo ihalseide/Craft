@@ -2,12 +2,12 @@
 #define _GameModel_h
 
 
-#include "config.h"
-#include "map.h"
-#include "Worker.h"
 #include "Block.h"
 #include "Chunk.h"
 #include "Physics.h"
+#include "Worker.h"
+#include "config.h"
+#include "map.h"
 #include "player.h"
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
@@ -18,6 +18,10 @@
 #define MAX_TEXT_LENGTH 256
 #define MAX_PATH_LENGTH 256
 #define MAX_ADDR_LENGTH 256
+
+
+// Forward-declare
+struct BlockProperties;
 
 
 // Program state model
@@ -56,7 +60,8 @@
 // - block1:
 // - copy0:
 // - copy1:
-typedef struct {
+typedef struct Model
+{
     GLFWwindow *window;
     Worker workers[WORKERS];
     Chunk chunks[MAX_CHUNKS];
@@ -92,7 +97,16 @@ typedef struct {
     Block copy0;
     Block copy1;
     PhysicsConfig physics;
-} Model;
+    struct BlockProperties *the_block_types;
+    int the_block_types_count;
+}
+Model;
+
+
+int
+game_get_block_props(
+        const Model *g,
+        struct BlockProperties **out_block_props);
 
 
 #endif
