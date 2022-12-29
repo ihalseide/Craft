@@ -110,20 +110,20 @@ on_key(
         }
         if (key >= '1' && key <= '9') {
             game->item_index = key - '1';
+            game->item_index = MIN(game->item_index, game->item_count);
         }
         if (key == '0') {
             game->item_index = 9;
+            game->item_index = MIN(game->item_index, game->item_count);
         }
         if (key == CRAFT_KEY_ITEM_NEXT) {
-            // TODO: implement
-            //game->item_index = (game->item_index + 1) % item_count;
+            game->item_index = (game->item_index + 1) % game->item_count;
         }
         if (key == CRAFT_KEY_ITEM_PREV) {
-            // TODO: implement
-            //game->item_index--;
-            //if (game->item_index < 0) {
-            //    game->item_index = item_count - 1;
-            //}
+            game->item_index--;
+            if (game->item_index < 0) {
+                game->item_index = game->item_count - 1;
+            }
         }
         if (key == CRAFT_KEY_OBSERVE) {
             game->observe1 = (game->observe1 + 1) % game->player_count;
@@ -180,21 +180,19 @@ on_scroll(
         double /*xdelta*/,        // change in x scroll
         double ydelta)            // change in y scroll
 {
-    return;
-    // TODO: implement
-    //static double ypos = 0;
-    //ypos += ydelta;
-    //if (ypos < -SCROLL_THRESHOLD) {
-    //    game->item_index = (game->item_index + 1) % item_count;
-    //    ypos = 0;
-    //}
-    //if (ypos > SCROLL_THRESHOLD) {
-    //    game->item_index--;
-    //    if (game->item_index < 0) {
-    //        game->item_index = item_count - 1;
-    //    }
-    //    ypos = 0;
-    //}
+    static double ypos = 0;
+    ypos += ydelta;
+    if (ypos < -SCROLL_THRESHOLD) {
+        game->item_index = (game->item_index + 1) % game->item_count;
+        ypos = 0;
+    }
+    if (ypos > SCROLL_THRESHOLD) {
+        game->item_index--;
+        if (game->item_index < 0) {
+            game->item_index = game->item_count - 1;
+        }
+        ypos = 0;
+    }
 }
 
 

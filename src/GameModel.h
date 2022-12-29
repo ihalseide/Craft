@@ -81,6 +81,7 @@ typedef struct Model
     int observe1;
     int observe2;
     int item_index;
+    int item_count;
     int scale;
     int ortho;
     float fov;
@@ -97,7 +98,7 @@ typedef struct Model
     Block copy0;
     Block copy1;
     PhysicsConfig physics;
-    BlockProperties the_block_types[1];
+    BlockProperties *the_block_types;
     int the_block_types_count;
 }
 Model;

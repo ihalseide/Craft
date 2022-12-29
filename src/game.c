@@ -1,4 +1,5 @@
 #include "auth.h"
+#include "Block.h"
 #include "blocks.h"
 #include "client.h"
 #include "config.h"
@@ -2546,8 +2547,9 @@ render_item(
     glUniform3f(attrib->camera, 0, 0, 5);
     glUniform1i(attrib->sampler, 0);
     glUniform1f(attrib->timer, time_of_day(g));
-    //int w = items[g->item_index];  // TODO get this
-    int w = 1;
+    int w = g->item_index + 1;
+    w = MAX(w, 1);
+    w = MIN(w, g->item_count);
     if (block_is_plant(g, w)) {
         GLuint buffer = gen_plant_buffer(0, 0, 0, 0.5, w);
         draw_plant(attrib, buffer);
@@ -3093,10 +3095,9 @@ place_block(
     int hw = hit_test(g, 1, s->x, y, s->z, s->rx, s->ry, &hx, &hy, &hz);
     if (!(hy > 0 && hy < 256 && block_is_obstacle(g, hw))) { return 0; }
     if (player_intersects_block(s->x, s->y, s->z, s->vx, s->vy, s->vz, hx, hy, hz)) { return 0; }
-    //set_block(g, hx, hy, hz, items[g->item_index]);
-    set_block(g, hx, hy, hz, 1);
-    //record_block(g, hx, hy, hz, items[g->item_index]);
-    record_block(g, hx, hy, hz, 1);
+    BlockKind w = g->item_index + 1;
+    set_block(g, hx, hy, hz, w);
+    record_block(g, hx, hy, hz, w);
     return 1;
 }
 
@@ -3775,9 +3776,19 @@ void
 game_create_standard_blocks(
         Model *g)
 {
-    g->the_block_types_count = sizeof(g->the_block_types) / sizeof(g->the_block_types[0]);
-    BlockKind this_block = 1;
+    g->the_block_types_count = 2;
+    g->the_block_types = calloc(g->the_block_types_count, sizeof(*g->the_block_types));
+
+    BlockKind this_block;
+
+    this_block = 1;
     game_block_set_all_faces_tile_index(g, this_block, 245);
+    game_block_set_obstacle(g, this_block);
+    game_block_set_max_damage(g, this_block, 50);
+    game_block_set_min_damage_change(g, this_block, 3);
+
+    this_block = 2;
+    game_block_set_all_faces_tile_index(g, this_block, 240);
     game_block_set_obstacle(g, this_block);
     game_block_set_max_damage(g, this_block, 50);
     game_block_set_min_damage_change(g, this_block, 3);
@@ -3809,6 +3820,7 @@ reset_model(
     g->time_changed = 1;
 
     game_create_standard_blocks(g);
+    g->item_count = g->the_block_types_count;
 
     // Default physics
     set_default_physics(&g->physics);
